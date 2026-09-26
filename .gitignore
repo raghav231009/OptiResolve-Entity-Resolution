@@ -1,0 +1,22 @@
+# Output TSVs and large artifacts (>100MB exceeds GitHub limits)
+output/
+artifacts/*.joblib
+*.zip
+*.tsv
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Data directories
+data/
+dataset/
+
+# System files
+.DS_Store
+Thumbs.db
