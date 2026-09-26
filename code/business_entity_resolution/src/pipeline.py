@@ -1,6 +1,7 @@
 """
 End-to-End Execution Pipeline for Business Entity Resolution.
-Supports full dataset training, threshold optimization, and streamed inference for test sets.
+Supports full dataset training, early stopping validation, threshold optimization,
+and streamed inference for test sets.
 """
 
 import gc
@@ -19,6 +20,7 @@ from .metrics import compute_macro_f05
 from .model import EntityResolutionModel
 from .normalization import (
     clean_business_name,
+    extract_building_number,
     extract_numeric_tokens,
     extract_postal_code,
     normalize_address,
@@ -39,6 +41,7 @@ def preprocess_record(row: dict) -> dict:
     clean_name, root_name = clean_business_name(raw_name)
     clean_addr = normalize_address(raw_addr)
     postal = extract_postal_code(raw_addr)
+    bldg_num = extract_building_number(clean_addr, postal)
     num_tokens = extract_numeric_tokens(clean_addr)
 
     return {
@@ -48,6 +51,7 @@ def preprocess_record(row: dict) -> dict:
         "root_name": root_name,
         "clean_address": clean_addr,
         "postal_code": postal,
+        "building_number": bldg_num,
         "numeric_tokens": num_tokens,
     }
 
@@ -98,14 +102,12 @@ def load_targeted_training_targets(
         logger.info(f"Targeted loading from {path.name}...")
         bg_loaded = 0
         for chunk in pd.read_csv(path, sep="\t", chunksize=chunksize, dtype=str):
-            # Extract needed positive matches
             mask_needed = chunk["entity_id"].isin(remaining_needed)
             needed_rows = chunk[mask_needed]
             for r in needed_rows.to_dict("records"):
                 targets.append(preprocess_record(r))
                 remaining_needed.discard(r["entity_id"])
 
-            # Extract background distractors
             if bg_loaded < background_sample_per_file:
                 other_rows = chunk[~mask_needed]
                 take_n = min(len(other_rows), min(10000, background_sample_per_file - bg_loaded))
@@ -130,6 +132,7 @@ class EntityResolutionPipeline:
         )
         self.model = EntityResolutionModel(self.config.model)
         self.optimal_threshold = self.config.default_threshold
+
         thresh_path = self.config.paths.artifacts_dir / "optimal_threshold.json"
         if thresh_path.exists():
             try:
@@ -141,26 +144,38 @@ class EntityResolutionPipeline:
                 logger.warning(f"Could not load optimal threshold: {e}")
 
     def fit(self):
-        """Train pipeline on configured training dataset."""
+        """Train pipeline with strict holdout validation and early stopping."""
         logger.info("Starting Pipeline Training Phase...")
 
-        # 1. Load S1 training subset
+        # 1. Load S1 training pool
         train_s1 = load_and_preprocess_file(
             self.config.paths.train_source1,
             nrows=self.config.train_s1_limit,
         )
-        train_s1_ids = {r["entity_id"] for r in train_s1}
+        all_s1_ids = {r["entity_id"] for r in train_s1}
 
         # 2. Load Ground Truth
-        gt = load_ground_truth(self.config.paths.train_ground_truth, train_s1_ids)
+        gt = load_ground_truth(self.config.paths.train_ground_truth, all_s1_ids)
 
-        # Collect all required target IDs for 100% positive link representation
+        # 3. SPLIT S1 FIRST into train and holdout validation sets (Prevents Validation Leakage)
+        all_s1_list = list(train_s1)
+        np.random.seed(self.config.random_seed)
+        np.random.shuffle(all_s1_list)
+
+        val_size = min(self.config.val_s1_limit or 5000, max(500, len(all_s1_list) // 5))
+        val_s1 = all_s1_list[:val_size]
+        fit_s1 = all_s1_list[val_size:]
+
+        val_gt = {r["entity_id"]: gt.get(r["entity_id"], set()) for r in val_s1}
+        fit_gt = {r["entity_id"]: gt.get(r["entity_id"], set()) for r in fit_s1}
+
+        # Collect needed target IDs for training and validation
         needed_target_ids = set()
-        for s1_id, matches in gt.items():
+        for matches in gt.values():
             needed_target_ids.update(matches)
-        logger.info(f"Identified {len(needed_target_ids):,} unique true target IDs to load.")
+        logger.info(f"Total true target IDs across train+val: {len(needed_target_ids):,}")
 
-        # 3. Targeted Loading of Targets (S2 and S3)
+        # 4. Load Targets from S2 and S3
         targets = load_targeted_training_targets(
             [self.config.paths.train_source2, self.config.paths.train_source3],
             needed_ids=needed_target_ids,
@@ -173,54 +188,69 @@ class EntityResolutionPipeline:
 
         target_map = {r["entity_id"]: r for r in targets}
 
-        # 4. Generate pairs: Positives + Mined Hard Negatives
-        logger.info("Generating training pairs (positives + hard negatives)...")
-        X_list: List[List[float]] = []
-        y_list: List[int] = []
+        # 5. Build Training Pair Matrix (Positives + Mined Hard Negatives)
+        logger.info("Generating training pairs...")
+        X_train_list, y_train_list = [], []
 
-        all_s1_list = list(train_s1)
-        np.random.seed(self.config.random_seed)
-        np.random.shuffle(all_s1_list)
-
-        val_size = min(self.config.val_s1_limit or 5000, len(all_s1_list) // 5)
-        val_s1 = all_s1_list[:val_size]
-        fit_s1 = all_s1_list[val_size:]
-
-        val_gt = {r["entity_id"]: gt.get(r["entity_id"], set()) for r in val_s1}
-
-        # Build training feature matrix
         for s1_rec in tqdm(fit_s1, desc="Building Train Pairs"):
             s1_id = s1_rec["entity_id"]
-            true_matches = gt.get(s1_id, set())
-
-            # Retrieve candidates
+            true_matches = fit_gt.get(s1_id, set())
             candidates = self.blocker.retrieve_candidates(s1_rec)
 
             # Positives
             for m_id in true_matches:
                 if m_id in target_map:
                     feats = compute_pair_features(s1_rec, target_map[m_id])
-                    X_list.append(feats)
-                    y_list.append(1)
+                    X_train_list.append(feats)
+                    y_train_list.append(1)
 
             # Hard Negatives
             neg_count = 0
             for c_id in candidates:
                 if c_id not in true_matches and c_id in target_map:
                     feats = compute_pair_features(s1_rec, target_map[c_id])
-                    X_list.append(feats)
-                    y_list.append(0)
+                    X_train_list.append(feats)
+                    y_train_list.append(0)
                     neg_count += 1
                     if neg_count >= self.config.max_negatives_per_positive:
                         break
 
-        X_train = np.array(X_list, dtype=np.float32)
-        y_train = np.array(y_list, dtype=np.int32)
-        logger.info(f"Constructed training matrix: {X_train.shape} (Positives: {np.sum(y_train):,}, Negatives: {len(y_train) - np.sum(y_train):,})")
+        # 6. Build Validation Pair Matrix for Early Stopping
+        logger.info("Generating validation pairs for model early stopping...")
+        X_val_list, y_val_list = [], []
+        val_scored_pairs: Dict[str, List[Tuple[str, float]]] = {}
 
-        # Train LightGBM model
-        logger.info("Fitting LightGBM classifier...")
-        self.model.train(X_train, y_train)
+        for s1_rec in tqdm(val_s1, desc="Building Val Pairs"):
+            s1_id = s1_rec["entity_id"]
+            true_matches = val_gt.get(s1_id, set())
+            candidates = self.blocker.retrieve_candidates(s1_rec)
+
+            for m_id in true_matches:
+                if m_id in target_map:
+                    X_val_list.append(compute_pair_features(s1_rec, target_map[m_id]))
+                    y_val_list.append(1)
+
+            neg_count = 0
+            for c_id in candidates:
+                if c_id not in true_matches and c_id in target_map:
+                    X_val_list.append(compute_pair_features(s1_rec, target_map[c_id]))
+                    y_val_list.append(0)
+                    neg_count += 1
+                    if neg_count >= 10:
+                        break
+
+        X_train = np.array(X_train_list, dtype=np.float32)
+        y_train = np.array(y_train_list, dtype=np.int32)
+        X_val = np.array(X_val_list, dtype=np.float32) if X_val_list else None
+        y_val = np.array(y_val_list, dtype=np.int32) if y_val_list else None
+
+        logger.info(f"Train matrix: {X_train.shape} (Positives: {np.sum(y_train):,}, Negatives: {len(y_train) - np.sum(y_train):,})")
+        if X_val is not None:
+            logger.info(f"Val matrix: {X_val.shape} (Positives: {np.sum(y_val):,}, Negatives: {len(y_val) - np.sum(y_val):,})")
+
+        # Train LightGBM model WITH active validation early stopping
+        logger.info("Fitting LightGBM classifier with early stopping...")
+        self.model.train(X_train, y_train, X_val=X_val, y_val=y_val)
 
         # Feature importances
         importances = self.model.get_feature_importances()
@@ -230,11 +260,9 @@ class EntityResolutionPipeline:
         self.model.save(self.config.paths.model_path)
         logger.info(f"Model serialized to {self.config.paths.model_path}")
 
-        # 5. Threshold Optimization on Validation Set
-        logger.info("Scoring validation candidates for threshold tuning...")
-        val_scored_pairs: Dict[str, List[Tuple[str, float]]] = {}
-
-        for s1_rec in tqdm(val_s1, desc="Validating"):
+        # 7. Threshold Optimization on Unseen Validation Set
+        logger.info("Scoring validation candidates for challenge Macro F_0.5 threshold tuning...")
+        for s1_rec in tqdm(val_s1, desc="Scoring Val Candidates"):
             s1_id = s1_rec["entity_id"]
             candidates = self.blocker.retrieve_candidates(s1_rec)
             valid_cands = [c for c in candidates if c in target_map]
@@ -256,6 +284,7 @@ class EntityResolutionPipeline:
             step=self.config.threshold_search_step,
         )
         self.optimal_threshold = best_tau
+
         thresh_path = self.config.paths.artifacts_dir / "optimal_threshold.json"
         with open(thresh_path, "w", encoding="utf-8") as f:
             json.dump({"optimal_threshold": best_tau, "validation_macro_f05": best_score}, f, indent=2)
@@ -264,8 +293,7 @@ class EntityResolutionPipeline:
     def predict_test(self, batch_size: int = 50000):
         """
         Run inference over official test set partitioned by country (France, US, India).
-        Maintains low memory footprint and writes candidate_pairs.tsv and matching_results.tsv
-        strictly conforming to official submission format.
+        Enforces candidate subset invariant and streams output TSVs with low memory footprint.
         """
         logger.info("Starting Scalable Test Prediction Phase...")
         out_matching = self.config.paths.matching_results
@@ -280,7 +308,7 @@ class EntityResolutionPipeline:
         # Dynamically discover countries from test_source1
         logger.info("Discovering open-set countries in test_source1.tsv...")
         df_countries = pd.read_csv(self.config.paths.test_source1, sep="\t", usecols=["country"])
-        countries = [str(c).strip().upper() for c in df_countries["country"].dropna().unique()]
+        countries = sorted([str(c).strip().upper() for c in df_countries["country"].dropna().unique()])
         logger.info(f"Test Set Countries Discovered: {countries}")
         del df_countries
         gc.collect()
@@ -292,7 +320,6 @@ class EntityResolutionPipeline:
         for country in countries:
             logger.info(f"\n>>> PROCESSING COUNTRY: {country} <<<")
 
-            # 1. Load targets for this country from Test S2 and Test S3
             country_targets: List[dict] = []
             target_map: Dict[str, dict] = {}
 
@@ -307,7 +334,6 @@ class EntityResolutionPipeline:
 
             logger.info(f"Loaded {len(country_targets):,} target records for country={country}.")
 
-            # 2. Build MultiIndexBlocker for this country
             logger.info(f"Building blocker index for {country}...")
             blocker = MultiIndexBlocker(
                 max_candidates=self.config.blocking.max_candidates_per_entity,
@@ -318,7 +344,6 @@ class EntityResolutionPipeline:
             blocker.index_targets(country_targets)
             blocker.prune_large_blocks()
 
-            # 3. Stream S1 for this country and generate predictions
             logger.info(f"Streaming {self.config.paths.test_source1.name} for country={country}...")
             s1_stream = pd.read_csv(self.config.paths.test_source1, sep="\t", chunksize=batch_size, dtype=str)
 
@@ -361,6 +386,9 @@ class EntityResolutionPipeline:
                     s1_id = s1_rec["entity_id"]
                     cands = s1_candidates_map.get(s1_id, [])
                     matches = matched_per_s1.get(s1_id, [])
+
+                    # Invariant Check: matched IDs must be a strict subset of candidate IDs
+                    assert set(matches).issubset(set(cands)), f"Invariant violation on {s1_id}: match not in candidates!"
 
                     candidate_lines.append(f"{s1_id}\t{','.join(cands)}\n")
                     matching_lines.append(f"{s1_id}\t{','.join(matches)}\n")

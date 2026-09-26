@@ -57,7 +57,6 @@ def strip_accents_and_normalize(text: str) -> str:
     """Normalize unicode, strip accents (NFKD), lowercase, and canonicalize symbols."""
     if not text or not isinstance(text, str):
         return ""
-    # Unicode NFKD decomposition separates base characters from diacritical marks
     decomposed = unicodedata.normalize("NFKD", text)
     stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
     cleaned = stripped.lower()
@@ -102,3 +101,21 @@ def extract_numeric_tokens(address: str) -> Set[str]:
     if not address or not isinstance(address, str):
         return set()
     return set(DIGIT_TOKEN_REGEX.findall(address.lower()))
+
+
+def extract_building_number(address: str, postal_code: str = "") -> str:
+    """
+    Extract the primary building / house / street number, explicitly distinct from the postal code.
+    E.g. '85 Wayne Ave, NY 12883' -> '85' (not '12883').
+    """
+    if not address or not isinstance(address, str):
+        return ""
+    tokens = DIGIT_TOKEN_REGEX.findall(address.lower())
+    for tok in tokens:
+        # Avoid picking the postal code as the building number
+        if postal_code and tok == postal_code:
+            continue
+        # Standard building numbers are typically 1 to 4 digits
+        if len(tok) <= 5:
+            return tok
+    return ""
