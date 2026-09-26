@@ -9,12 +9,23 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
-# Locate the root of the repository dynamically
+# Locate the root of the repository dynamically.
+# This stale config.py is at: <repo>/code/business_entity_resolution/src/config.py
+# parents: [0]=src, [1]=business_entity_resolution, [2]=code, [3]=<repo>
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 def find_dataset_root() -> Path:
-    """Dynamically discover dataset directory relative to project root or environment."""
+    """Dynamically discover dataset directory relative to project root or environment.
+
+    Resolution order:
+      1. DATASET_ROOT environment variable (if set and exists)
+      2. <PROJECT_ROOT>/data
+      3. <PROJECT_ROOT>/dataset
+
+    If none found, returns <PROJECT_ROOT>/dataset as default (will raise
+    a clear FileNotFoundError at data-load time if it doesn't exist).
+    """
     if "DATASET_ROOT" in os.environ:
         p = Path(os.environ["DATASET_ROOT"]).resolve()
         if p.exists():
@@ -23,14 +34,12 @@ def find_dataset_root() -> Path:
     candidates = [
         PROJECT_ROOT / "data",
         PROJECT_ROOT / "dataset",
-        PROJECT_ROOT.parent / "dataset",
-        PROJECT_ROOT.parent / "dataset amazon" / "student_resource" / "dataset",
-        Path(r"D:\dataset amazon\student_resource\dataset"),
     ]
     for c in candidates:
         if c.exists() and (c / "train").exists():
             return c.resolve()
 
+    # Return a sensible default; pipeline will fail with a clear path in the error
     return (PROJECT_ROOT / "dataset").resolve()
 
 
