@@ -121,11 +121,14 @@ class MultiIndexBlocker:
 
             for sa in street_anchors:
                 self.idx_street_anchor[country][sa].append(eid)
+                self.idx_sub_blocks[country][f"street_{sa}_{sub_q}"].append(eid)
 
     def prune_large_blocks(self):
         """
-        Identify oversized blocks and mark them for secondary sub-blocking
-        rather than destructive deletion.
+        Identify oversized blocks across all channels and mark them for
+        secondary sub-blocking rather than destructive deletion.
+        No blocks are ever deleted — oversized blocks are routed to finer
+        sub-block partitions at retrieval time.
         """
         for country, keys in self.idx_name_token.items():
             for key in list(keys.keys()):
@@ -140,7 +143,7 @@ class MultiIndexBlocker:
         for country, keys in self.idx_street_anchor.items():
             for key in list(keys.keys()):
                 if len(keys[key]) > self.max_block_size:
-                    del keys[key]
+                    self.oversized_keys[country].add(f"street_{key}")
 
     def retrieve_candidates(self, s1_rec: dict) -> List[str]:
         """
@@ -179,9 +182,12 @@ class MultiIndexBlocker:
         for tw in two_words:
             cand_set.update(self.idx_two_word[country].get(tw, []))
 
-        # Channel 6: Street Name Anchor
+        # Channel 6: Street Name Anchor (with sub-block routing for oversized blocks)
         for sa in street_anchors:
-            cand_set.update(self.idx_street_anchor[country].get(sa, []))
+            if f"street_{sa}" in self.oversized_keys[country]:
+                cand_set.update(self.idx_sub_blocks[country].get(f"street_{sa}_{sub_q}", []))
+            else:
+                cand_set.update(self.idx_street_anchor[country].get(sa, []))
 
         if not cand_set:
             return []

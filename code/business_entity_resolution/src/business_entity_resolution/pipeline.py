@@ -316,6 +316,33 @@ class EntityResolutionPipeline:
             json.dump({"optimal_threshold": best_tau, "validation_macro_f05": best_score}, f, indent=2)
         logger.info(f"==> OPTIMAL THRESHOLD LOCKED: tau* = {best_tau:.3f} with Validation Macro F0.5 = {best_score:.4f} (Saved to {thresh_path})")
 
+        # Persist comprehensive training results for reproducibility (Issue #15)
+        results_path = self.config.paths.artifacts_dir / "training_results.json"
+        training_results = {
+            "validation_macro_f05": best_score,
+            "optimal_threshold": best_tau,
+            "threshold_search_history": {str(k): v for k, v in history.items()},
+            "train_matrix_shape": list(X_train.shape),
+            "train_positives": int(np.sum(y_train)),
+            "train_negatives": int(len(y_train) - np.sum(y_train)),
+            "val_matrix_shape": list(X_val.shape) if X_val is not None else None,
+            "val_positives": int(np.sum(y_val)) if y_val is not None else None,
+            "val_negatives": int(len(y_val) - np.sum(y_val)) if y_val is not None else None,
+            "train_s1_count": len(fit_s1),
+            "val_s1_count": len(val_s1),
+            "feature_importances": importances,
+            "early_stopping_best_iteration": getattr(self.model.clf, "best_iteration_", None),
+            "blocking_config": {
+                "max_candidates_per_entity": self.config.blocking.max_candidates_per_entity,
+                "max_block_size": self.config.blocking.max_block_size,
+                "min_token_len": self.config.blocking.min_token_len,
+                "name_prefix_len": self.config.blocking.name_prefix_len,
+            },
+        }
+        with open(results_path, "w", encoding="utf-8") as f:
+            json.dump(training_results, f, indent=2)
+        logger.info(f"Training results persisted to {results_path}")
+
     def predict_test(self, batch_size: int = 50000):
         """
         Run inference over official test set partitioned by country (France, US, India).

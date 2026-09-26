@@ -88,4 +88,4 @@ Empirical recall measurements across safety caps:
 - $K=60$: 96.4%
 - $K=80$: 97.6%
 - $K=100$: 98.1%
-Cap $K=60$ selected as optimal efficiency/recall trade-off.
+Production safety cap set to $K=80$ for optimal recall-precision balance, with Priority Tier Retention safeguarding true matches.

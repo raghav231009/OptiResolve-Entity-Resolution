@@ -24,8 +24,7 @@ def find_dataset_root() -> Path:
         PROJECT_ROOT / "data",
         PROJECT_ROOT / "dataset",
         PROJECT_ROOT.parent / "dataset",
-        PROJECT_ROOT.parent / "dataset amazon" / "student_resource" / "dataset",
-        Path(r"D:\dataset amazon\student_resource\dataset"),
+        PROJECT_ROOT.parent / "data",
     ]
     for c in candidates:
         if c.exists() and (c / "train").exists():
