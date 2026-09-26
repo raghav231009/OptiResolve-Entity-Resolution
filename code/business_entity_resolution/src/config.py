@@ -88,7 +88,7 @@ class PathConfig:
 
 @dataclass
 class BlockingConfig:
-    max_candidates_per_entity: int = 60  # Increased for higher recall ceiling
+    max_candidates_per_entity: int = 80  # Optimized candidate safety cap
     min_token_len: int = 3
     name_prefix_len: int = 4
     max_block_size: int = 350

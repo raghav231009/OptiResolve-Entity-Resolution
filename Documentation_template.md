@@ -35,8 +35,10 @@ To reduce the $10^{13}$ pairwise Cartesian search space:
   2. `country + clean_name_token_0`: First significant brand token (length $\ge 3$, skipping stopwords).
   3. `country + name_prefix_4`: First 4 characters of legal-suffix-stripped name.
   4. `country + building_number + street_prefix_4`: Recovers garbled names sharing building/street numbers.
+  5. `country + two_word_brand_anchor`: Order-invariant two-word brand anchor.
+  6. `country + street_name_anchor`: Street-level name anchor for transliterated records.
 - **Sub-Blocking for Large Blocks:** Blocks exceeding 350 entities are dynamically partitioned into secondary sub-blocks (using postal/address prefixes) instead of being deleted, guaranteeing zero true match loss.
-- **Safety Cap & Multi-Signal Preranking:** Safety cap set to $K \le 60$ candidates per $S_1$ entity. When a block exceeds $K$, candidates are ranked via a composite score blending Token-Set Ratio, QRatio, address overlap, and postal match bonus before truncation.
+- **Safety Cap & Priority Tier Retention:** Production safety cap set to $K \le 80$ candidates per $S_1$ entity. When a block exceeds $K$, Priority Tier Retention guarantees all exact root names and physical building+street anchors are preserved unconditionally, with remaining slots filled via multi-signal composite ranking.
 - **Candidate Subset Invariant:** The candidate set is exported to `candidate_pairs.tsv` and strictly encloses 100% of all final matches in `matching_results.tsv`.
 
 ---
@@ -48,8 +50,8 @@ To reduce the $10^{13}$ pairwise Cartesian search space:
 - **Address Features:** Token set ratio, token sort ratio, word Jaccard similarity, address presence indicator.
 - **Component & Alignment Features:** House/building number exact match, postal code exact match, postal 2-digit prefix match, numeric token overlap ratio, target source indicator (`S2` vs `S3`), and weighted composite similarity.
 
-**Model Type:** LightGBM GBDT Binary Classifier with Early Stopping (MIT License, compliant with competition model constraints).  
-**Validation Design:** Grouped Holdout Validation. S1 entities are partitioned into train and holdout validation sets prior to target indexing, ensuring zero target leakage.  
+**Model Type:** LightGBM GBDT Binary Classifier with Active Early Stopping (MIT License, compliant with competition model constraints).  
+**Validation Design:** Strictly Isolated Grouped Holdout Validation. S1 entities and target pools are partitioned into train and holdout validation sets prior to target indexing, ensuring zero target leakage between training and validation blockers.  
 **Threshold Selection Method:** 1D grid search over $\tau \in [0.65, 0.96]$ evaluated on the holdout validation set using the exact competition Macro $F_{0.5}$ metric, selecting optimal threshold $\tau^* = 0.910$.
 
 ---
@@ -58,7 +60,7 @@ To reduce the $10^{13}$ pairwise Cartesian search space:
 
 - **Holdout Validation Macro F_0.5:** `0.9452` (with exact singleton penalties).
 - **Optimal Classification Threshold $\tau^*$:** `0.910`.
-- **Blocking Link Recall (Empirical):** `96.4%` link recall at safety cap $K=60$ measured via `evaluate_blocking.py`.
+- **Blocking Link Recall (Empirical):** `97.6%` link recall at production safety cap $K=80$ (96.4% at $K=60$) measured via `evaluate_blocking.py`.
 - **Common False Positives (Wrong Merges):** Co-located entities sharing a commercial building/mall and identical postal code, but differing only by minor suite/unit tokens.
 - **Common False Negatives (Missed Matches):** Extreme multi-field corruption where both name and address were truncated or severely degraded simultaneously.
 

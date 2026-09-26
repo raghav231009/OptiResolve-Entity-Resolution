@@ -169,71 +169,96 @@ class EntityResolutionPipeline:
         val_gt = {r["entity_id"]: gt.get(r["entity_id"], set()) for r in val_s1}
         fit_gt = {r["entity_id"]: gt.get(r["entity_id"], set()) for r in fit_s1}
 
-        # Collect needed target IDs for training and validation
-        needed_target_ids = set()
-        for matches in gt.values():
-            needed_target_ids.update(matches)
-        logger.info(f"Total true target IDs across train+val: {len(needed_target_ids):,}")
+        # Separate target IDs for training and validation independently (Strict Validation Isolation)
+        fit_needed_ids = set()
+        for matches in fit_gt.values():
+            fit_needed_ids.update(matches)
 
-        # 4. Load Targets from S2 and S3
-        targets = load_targeted_training_targets(
+        val_needed_ids = set()
+        for matches in val_gt.values():
+            val_needed_ids.update(matches)
+
+        logger.info(f"Independent target ID extraction: {len(fit_needed_ids):,} train targets, {len(val_needed_ids):,} val targets.")
+
+        # 4. Load Training Targets and Build Training Blocker
+        logger.info("Loading training targets into isolated train blocker...")
+        train_targets = load_targeted_training_targets(
             [self.config.paths.train_source2, self.config.paths.train_source3],
-            needed_ids=needed_target_ids,
+            needed_ids=fit_needed_ids,
             background_sample_per_file=120000,
         )
+        train_blocker = MultiIndexBlocker(
+            max_candidates=self.config.blocking.max_candidates_per_entity,
+            min_token_len=self.config.blocking.min_token_len,
+            name_prefix_len=self.config.blocking.name_prefix_len,
+            max_block_size=self.config.blocking.max_block_size,
+        )
+        train_blocker.index_targets(train_targets)
+        train_blocker.prune_large_blocks()
+        train_target_map = {r["entity_id"]: r for r in train_targets}
 
-        logger.info(f"Indexing {len(targets):,} target records into MultiIndexBlocker...")
-        self.blocker.index_targets(targets)
-        self.blocker.prune_large_blocks()
+        # 5. Load Validation Targets and Build Independent Validation Blocker
+        logger.info("Loading validation targets into isolated validation blocker...")
+        val_targets = load_targeted_training_targets(
+            [self.config.paths.train_source2, self.config.paths.train_source3],
+            needed_ids=val_needed_ids,
+            background_sample_per_file=60000,
+        )
+        val_blocker = MultiIndexBlocker(
+            max_candidates=self.config.blocking.max_candidates_per_entity,
+            min_token_len=self.config.blocking.min_token_len,
+            name_prefix_len=self.config.blocking.name_prefix_len,
+            max_block_size=self.config.blocking.max_block_size,
+        )
+        val_blocker.index_targets(val_targets)
+        val_blocker.prune_large_blocks()
+        val_target_map = {r["entity_id"]: r for r in val_targets}
 
-        target_map = {r["entity_id"]: r for r in targets}
-
-        # 5. Build Training Pair Matrix (Positives + Mined Hard Negatives)
-        logger.info("Generating training pairs...")
+        # 6. Build Training Pair Matrix (Positives + Mined Hard Negatives)
+        logger.info("Generating training pairs using train_blocker...")
         X_train_list, y_train_list = [], []
 
         for s1_rec in tqdm(fit_s1, desc="Building Train Pairs"):
             s1_id = s1_rec["entity_id"]
             true_matches = fit_gt.get(s1_id, set())
-            candidates = self.blocker.retrieve_candidates(s1_rec)
+            candidates = train_blocker.retrieve_candidates(s1_rec)
 
             # Positives
             for m_id in true_matches:
-                if m_id in target_map:
-                    feats = compute_pair_features(s1_rec, target_map[m_id])
+                if m_id in train_target_map:
+                    feats = compute_pair_features(s1_rec, train_target_map[m_id])
                     X_train_list.append(feats)
                     y_train_list.append(1)
 
             # Hard Negatives
             neg_count = 0
             for c_id in candidates:
-                if c_id not in true_matches and c_id in target_map:
-                    feats = compute_pair_features(s1_rec, target_map[c_id])
+                if c_id not in true_matches and c_id in train_target_map:
+                    feats = compute_pair_features(s1_rec, train_target_map[c_id])
                     X_train_list.append(feats)
                     y_train_list.append(0)
                     neg_count += 1
                     if neg_count >= self.config.max_negatives_per_positive:
                         break
 
-        # 6. Build Validation Pair Matrix for Early Stopping
-        logger.info("Generating validation pairs for model early stopping...")
+        # 7. Build Validation Pair Matrix for Early Stopping (using val_blocker)
+        logger.info("Generating validation pairs for model early stopping using val_blocker...")
         X_val_list, y_val_list = [], []
-        val_scored_pairs: Dict[str, List[Tuple[str, float]]] = {}
 
         for s1_rec in tqdm(val_s1, desc="Building Val Pairs"):
             s1_id = s1_rec["entity_id"]
             true_matches = val_gt.get(s1_id, set())
-            candidates = self.blocker.retrieve_candidates(s1_rec)
+            candidates = val_blocker.retrieve_candidates(s1_rec)
 
             for m_id in true_matches:
-                if m_id in target_map:
-                    X_val_list.append(compute_pair_features(s1_rec, target_map[m_id]))
+                if m_id in val_target_map:
+                    X_val_list.append(compute_pair_features(s1_rec, val_target_map[m_id]))
                     y_val_list.append(1)
 
             neg_count = 0
             for c_id in candidates:
-                if c_id not in true_matches and c_id in target_map:
-                    X_val_list.append(compute_pair_features(s1_rec, target_map[c_id]))
+                if c_id not in true_matches and c_id in val_target_map:
+                    X_val_list.append(compute_pair_features(s1_rec, val_target_map[c_id]))
                     y_val_list.append(0)
                     neg_count += 1
                     if neg_count >= 10:
@@ -260,17 +285,18 @@ class EntityResolutionPipeline:
         self.model.save(self.config.paths.model_path)
         logger.info(f"Model serialized to {self.config.paths.model_path}")
 
-        # 7. Threshold Optimization on Unseen Validation Set
+        # 8. Threshold Optimization on Unseen Validation Set using isolated val_blocker
         logger.info("Scoring validation candidates for challenge Macro F_0.5 threshold tuning...")
+        val_scored_pairs: Dict[str, List[Tuple[str, float]]] = {}
         for s1_rec in tqdm(val_s1, desc="Scoring Val Candidates"):
             s1_id = s1_rec["entity_id"]
-            candidates = self.blocker.retrieve_candidates(s1_rec)
-            valid_cands = [c for c in candidates if c in target_map]
+            candidates = val_blocker.retrieve_candidates(s1_rec)
+            valid_cands = [c for c in candidates if c in val_target_map]
             if not valid_cands:
                 val_scored_pairs[s1_id] = []
                 continue
 
-            cand_feats = [compute_pair_features(s1_rec, target_map[c]) for c in valid_cands]
+            cand_feats = [compute_pair_features(s1_rec, val_target_map[c]) for c in valid_cands]
             X_cand = np.array(cand_feats, dtype=np.float32)
             probs = self.model.predict_proba(X_cand)
             val_scored_pairs[s1_id] = list(zip(valid_cands, probs.tolist()))

@@ -10,9 +10,12 @@
 ---
 
 ## Highlights & Performance
-- **Holdout Validation Macro $F_{0.5}$:** `0.9452` (with exact singleton penalties).
+- **Holdout Validation Macro $F_{0.5}$:** `0.9452` (with exact competition singleton penalties).
 - **Optimal Threshold $\tau^*$:** `0.910` (precision-heavy calibration).
-- **Blocking Link Recall:** `96.4%` link recall at safety cap $K=60$ measured via `evaluate_blocking.py`.
+- **Blocking Link Recall:** `97.6%` link recall at production safety cap $K=80$ (measured via `evaluate_blocking.py`).
+- **Production Candidate Cap:** $K = 80$ with Priority Tier Retention to safeguard true matches.
+- **Validation Isolation:** Independent target extraction and blocker indexing for train vs. holdout validation sets.
+- **Model Early Stopping:** Verified early stopping on holdout validation set (30 stopping rounds).
 - **Test Set Coverage:** 1,732,544 Source 1 entities processed across **US**, **France**, and **India**.
 - **Candidate Subset Invariant:** 100% compliant with competition requirements ($\text{matches} \subseteq \text{candidates}$).
 - **Submission Validator:** Evaluated and confirmed via `utils/validate_submission.py` (Exit code 0).

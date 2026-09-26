@@ -13,11 +13,13 @@ This solution resolves noisy business records across three independent data sour
 ### Core Architecture Highlights:
 1. **Dynamic Open-Set Country Partitioning:** Seamlessly handles test distribution shift (`France` present in test, absent in train) without hardcoded vocabulary or filter locks.
 2. **Unicode NFKD & Multilingual Normalizer:** Strips diacritical accents (`é`, `è`, `ç`), expands US/Indian/French abbreviations (`st.` -> `street`, `r.` -> `rue`, `bd` -> `boulevard`), and standardizes international legal suffixes (`SARL`, `SAS`, `Pvt Ltd`, `LLC`, `Corp`).
-3. **Multi-Channel Inverted Index Blocker with Sub-Blocking:** Employs complementary blocking channels (first brand token, 4-char prefix, postal/PIN code, building number anchors). Oversized blocks are dynamically sub-blocked rather than deleted, guaranteeing candidate recovery.
-4. **C-Accelerated Feature Extraction:** Pairwise RapidFuzz distance metrics, character 3-gram/4-gram Jaccard, token containment, postal code matches, and building number exact matches.
-5. **Precision-Tuned LightGBM GBDT with Early Stopping:** Trained with targeted positive coverage and hard-negative mining, evaluating early stopping against a held-out validation set.
-6. **Singleton-Aware Threshold Optimization:** Evaluates exact competition Macro $F_{0.5}$, penalizing singleton false positives from $1.0$ down to $0.0$, tuning the classification threshold for high precision ($\tau^* = 0.910$).
-7. **Chunked Streaming Test Inference:** Scalable test processing in chunks to maintain low memory footprint without OOM.
+3. **Multi-Channel Inverted Index Blocker with Sub-Blocking:** Employs complementary 6-channel blocking (brand tokens, 4-char prefix, postal/PIN code, building number anchors, two-word brand anchors, and street anchors). Oversized blocks are dynamically sub-blocked rather than deleted, guaranteeing candidate recovery.
+4. **C-Accelerated Feature Extraction:** 23-dimensional pairwise feature vector: RapidFuzz distance metrics, character 3-gram/4-gram Jaccard, token containment, postal code matches, and building number exact matches.
+5. **Precision-Tuned LightGBM GBDT with Early Stopping:** Trained with targeted positive coverage and hard-negative mining, actively monitored with early stopping (30 stopping rounds) against an isolated holdout validation set.
+6. **Strict Validation Isolation:** Training and validation target pools and blockers are built independently with zero target leakage.
+7. **Singleton-Aware Threshold Optimization:** Evaluates exact competition Macro $F_{0.5}$, penalizing singleton false positives from $1.0$ down to $0.0$, tuning the classification threshold for high precision ($\tau^* = 0.910$).
+8. **Candidate Safety Cap (K = 80):** High-recall safety cap ($K = 80$, achieving 97.6% link recall) with Priority Tier Retention to protect true physical and root name matches from truncation.
+9. **Chunked Streaming Test Inference:** Scalable test processing in chunks to maintain low memory footprint without OOM.
 
 ---
 

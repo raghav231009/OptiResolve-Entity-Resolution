@@ -1,8 +1,10 @@
 """
 Model Training Module for Business Entity Resolution.
-Trains LightGBM GBDT classifier with hard-negative mining and early stopping.
+Trains LightGBM GBDT classifier with hard-negative mining, active validation monitoring,
+and early stopping.
 """
 
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import joblib
@@ -11,6 +13,8 @@ import numpy as np
 
 from .config import ModelConfig
 from .features import FEATURE_NAMES
+
+logger = logging.getLogger(__name__)
 
 
 class EntityResolutionModel:
@@ -27,7 +31,7 @@ class EntityResolutionModel:
         X_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
     ):
-        """Train LightGBM binary classifier."""
+        """Train LightGBM binary classifier with verified early stopping."""
         self.clf = lgb.LGBMClassifier(
             objective=self.config.objective,
             boosting_type=self.config.boosting_type,
@@ -46,14 +50,19 @@ class EntityResolutionModel:
         )
 
         eval_set = [(X_val, y_val)] if (X_val is not None and y_val is not None) else None
-        callbacks = [lgb.early_stopping(stopping_rounds=30, verbose=False)] if eval_set else None
+        callbacks = [lgb.early_stopping(stopping_rounds=30, verbose=True)] if eval_set else None
 
         self.clf.fit(
             X_train,
             y_train,
             eval_set=eval_set,
+            eval_names=["val"] if eval_set else None,
             callbacks=callbacks,
         )
+
+        if eval_set and hasattr(self.clf, "best_iteration_"):
+            val_loss = self.clf.best_score_.get("val", {}).get("binary_logloss", "N/A")
+            logger.info(f"Early stopping confirmed: Best iteration = {self.clf.best_iteration_} | Best validation score = {val_loss}")
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         """Return probability of positive match."""
