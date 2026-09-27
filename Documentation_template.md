@@ -52,22 +52,22 @@ To reduce the $10^{13}$ pairwise Cartesian search space:
 
 **Model Type:** LightGBM GBDT Binary Classifier with Active Early Stopping (MIT License, compliant with competition model constraints).  
 **Validation Design:** Strictly Isolated Grouped Holdout Validation. S1 entities and target pools are partitioned into train and holdout validation sets prior to target indexing, ensuring zero target leakage between training and validation blockers.  
-**Threshold Selection Method:** 1D grid search over $\tau \in [0.65, 0.96]$ evaluated on the holdout validation set using the exact competition Macro $F_{0.5}$ metric, selecting optimal threshold $\tau^* = 0.910$.
+**Threshold Selection Method:** 1D grid search over $\tau \in [0.50, 0.99]$ evaluated on the holdout validation set using the exact competition Macro $F_{0.5}$ metric, selecting optimal threshold $\tau^* = 0.780$.
 
 ---
 
 ## 5. Results & Error Analysis
 
-- **Holdout Validation Macro F_0.5:** `0.9452` (with exact singleton penalties).
-- **Optimal Classification Threshold $\tau^*$:** `0.910`.
-- **Blocking Link Recall (Empirical):** `90.87%` link recall (`79.69%` S1 complete entity recall) at production safety cap $K=80$ measured via `evaluate_blocking.py` on actual ground truth across 217,362 targets.
+- **Holdout Validation Macro F_0.5:** `0.9426` (with exact singleton penalties, measured at $\tau^* = 0.780$).
+- **Optimal Classification Threshold $\tau^*$:** `0.780`.
+- **Blocking Link Recall (Empirical):** `93.46%` link recall (`81.25%` S1 complete entity recall) at production safety cap $K=80$ measured via `evaluate_blocking.py` on actual ground truth across 217,362 targets with Dual-Tier Priority Retention.
 - **Common False Positives (Wrong Merges):** Co-located entities sharing a commercial building/mall and identical postal code, but differing only by minor suite/unit tokens.
-- **Common False Negatives (Missed Matches):** Extreme multi-field corruption where both name and address were truncated or severely degraded simultaneously.
+- **Common False Negatives (Missed Matches):** Extreme multi-field corruption where both name and address were truncated or missing simultaneously.
 
 ---
 
 ## 6. Conclusion
-OptiResolve demonstrates that modular, country-partitioned multi-channel blocking paired with C-accelerated string metrics, sub-blocking, and singleton-aware threshold optimization yields a fast, memory-safe, and highly competitive entity resolution pipeline that strictly conforms to official competition guidelines without requiring external data.
+OptiResolve demonstrates that modular, country-partitioned multi-channel blocking paired with C-accelerated string metrics, sub-blocking, dual-tier candidate capping, and singleton-aware threshold optimization yields a fast, memory-safe, and highly competitive entity resolution pipeline that strictly conforms to official competition guidelines without requiring external data.
 
 ---
 
@@ -76,18 +76,18 @@ OptiResolve demonstrates that modular, country-partitioned multi-channel blockin
 ### A. Code Artefacts
 Complete runnable pipeline is provided in `code/business_entity_resolution/`:
 - `src/business_entity_resolution/`: All source code.
-- `run_pipeline.py`: Entry point reproducing `output/matching_results.tsv` and `output/candidate_pairs.tsv`.
+- `run_pipeline.py`: Entry point supporting `--mode dev-train`, `--mode final-train`, `--mode predict`, and `--mode all`.
 - `evaluate_blocking.py`: Script to reproduce candidate link recall.
 - `requirements.txt`: Exact pinned dependencies (`==`).
-- `tests/`: 168 automated tests passing (including end-to-end integration and edge-case tests).
+- `tests/`: 262 automated tests passing (including end-to-end integration and edge-case tests).
 
 ### B. Additional Results
-Empirical recall measurements across safety caps ($K$) on actual training ground truth:
-- $K=20$: 89.55% Link Recall (76.71% Entity Recall, 18.95 avg cands/entity)
-- $K=40$: 90.36% Link Recall (78.60% Entity Recall, 35.29 avg cands/entity)
-- $K=60$: 90.58% Link Recall (79.13% Entity Recall, 49.61 avg cands/entity)
-- $K=80$: 90.87% Link Recall (79.69% Entity Recall, 62.56 avg cands/entity) [Default]
-- $K=100$: 91.04% Link Recall (79.94% Entity Recall, 74.56 avg cands/entity)
-- $K=150$: 91.45% Link Recall (80.70% Entity Recall, 101.90 avg cands/entity)
+Empirical recall measurements across safety caps ($K$) on actual training ground truth with Dual-Tier Priority Retention:
+- $K=20$: 91.24% Link Recall (77.85% Entity Recall, 18.95 avg cands/entity)
+- $K=40$: 92.48% Link Recall (79.80% Entity Recall, 35.29 avg cands/entity)
+- $K=60$: 93.12% Link Recall (80.64% Entity Recall, 49.61 avg cands/entity)
+- $K=80$: 93.46% Link Recall (81.25% Entity Recall, 62.56 avg cands/entity) [Default]
+- $K=100$: 93.70% Link Recall (81.65% Entity Recall, 74.56 avg cands/entity)
+- $K=150$: 94.15% Link Recall (82.30% Entity Recall, 101.90 avg cands/entity)
 
-Production safety cap defaults to empirically justified $K=80$ for optimal recall-efficiency balance, with Priority Tier Retention safeguarding true matches. Fully configurable via CLI (`--max-candidates`) or environment variable (`OPTIRESOLVE_MAX_CANDIDATES`).
+Production safety cap defaults to empirically justified $K=80$ for optimal recall-efficiency balance, with Dual-Tier Priority Retention safeguarding true matches (+532 true links saved, 82.6% reduction in capping loss). Fully configurable via CLI (`--max-candidates`) or environment variable (`OPTIRESOLVE_MAX_CANDIDATES`).

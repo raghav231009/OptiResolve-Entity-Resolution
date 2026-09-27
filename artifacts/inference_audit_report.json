@@ -1,0 +1,34 @@
+{
+  "total_s1": 1732544,
+  "rows_checked": 1732544,
+  "rows_missing": 0,
+  "invariant_violations": 0,
+  "candidate_statistics": {
+    "total_candidates": 44794460,
+    "average_candidates_per_s1": 25.85,
+    "p50_candidates": 40.0,
+    "p90_candidates": 40.0,
+    "p95_candidates": 40.0,
+    "p99_candidates": 40.0,
+    "max_candidates": 40
+  },
+  "prediction_statistics": {
+    "total_predictions": 5733062,
+    "average_predictions_per_s1": 3.309,
+    "predictions_by_country": {
+      "US": 2293644,
+      "FRANCE": 913604,
+      "INDIA": 2525814
+    },
+    "predictions_by_source": {
+      "S2": 2788951,
+      "S3": 2944111,
+      "Other": 0
+    },
+    "candidates_by_country": {
+      "US": 18046065,
+      "FRANCE": 5815060,
+      "INDIA": 20933335
+    }
+  }
+}

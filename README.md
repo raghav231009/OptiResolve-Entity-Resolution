@@ -5,21 +5,24 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Validation Status](https://img.shields.io/badge/Validator-PASS-brightgreen.svg)]()
-[![Tests](https://img.shields.io/badge/Tests-168%2F168%20Passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-262%2F262%20Passed-brightgreen.svg)]()
 
 ---
 
 ## Highlights & Performance
 
-> **Note:** Performance numbers reflect the last full-dataset run. The stored artifact (`artifacts/optimal_threshold.json`) is the authoritative source after each run.
+> **Note:** Performance numbers reflect the authoritative artifacts (`artifacts/optimal_threshold.json` and `artifacts/blocking_benchmark_results.json`).
 
-- **Holdout Validation Macro $F_{0.5}$:** `0.9417` (measured from `artifacts/optimal_threshold.json` and `artifacts/training_results.json`).
-- **Optimal Threshold $\tau^*$:** `0.750` (precision-heavy calibration; re-tuned per run).
-- **Blocking Link Recall:** `90.87%` link recall (`79.69%` S1 complete entity recall) at production safety cap $K=80$ across 217,362 target pool (reproducible via `evaluate_blocking.py`).
+- **Holdout Validation Macro $F_{0.5}$:** `0.9426` (measured from `artifacts/optimal_threshold.json`).
+- **Optimal Threshold $\tau^*$:** `0.780` (precision-calibrated for competition singleton penalty; locked for final training).
+- **Blocking Link Recall:** `93.46%` link recall (`81.25%` S1 complete entity recall) at production safety cap $K=80$ across 217,362 target pool with Dual-Tier Priority Retention (+532 true links saved, 82.6% reduction in capping loss).
 - **Production Candidate Cap:** $K = 80$ (empirically justified default; configurable via `--max-candidates` CLI flag or `OPTIRESOLVE_MAX_CANDIDATES` env var).
 - **6-Channel Blocking Engine:** Name tokens, name prefixes, postal codes, building+street anchors, two-word brand anchors, street anchors with deterministic sub-blocking to prevent recall loss without destructive deletion.
 - **Validation Isolation:** Independent target extraction and blocker indexing for train vs. holdout validation sets (zero leakage).
-- **Model Early Stopping:** LightGBM with early stopping (30 rounds) on isolated holdout validation set across 23 pairwise features.
+- **Two-Phase Training Architecture:**
+  - **Phase A (`dev-train`):** Train/val split, early stopping, threshold search, metadata export (`artifacts/dev_training_metadata.json`).
+  - **Phase B (`final-train`):** 100% S1 rows, all required positive S2/S3 targets, locked estimators & threshold from development, zero test tuning, export (`artifacts/final_training_metadata.json`).
+  - **Phase C (`predict`):** Low-memory streamed inference on test data, invariant check $\text{matches} \subseteq \text{candidates}$.
 - **Test Set Coverage:** 1,732,544 Source 1 entities processed across **US**, **France**, and **India** (5,733,062 total predicted links: 2,788,951 S2, 2,944,111 S3).
 - **Open-Set Countries:** Countries discovered dynamically from data — no hardcoded country list.
 - **Candidate Subset Invariant:** 100% compliant with competition requirements ($\text{matches} \subseteq \text{candidates}$ with 0 violations).
@@ -37,19 +40,23 @@
 │       │       ├── __init__.py
 │       │       ├── config.py           # Dynamic path & hyperparameter dataclasses
 │       │       ├── normalization.py    # Unicode NFKD, legal suffix & address cleaner
-│       │       ├── blocking.py         # 6-channel inverted index + deterministic sub-blocking
+│       │       ├── blocking.py         # 6-channel inverted index + sub-blocking + dual-tier capping
 │       │       ├── features.py         # 23-dim feature extractor (RapidFuzz, char n-grams)
 │       │       ├── metrics.py          # Exact Macro F0.5 evaluator with singleton logic
 │       │       ├── model.py            # LightGBM GBDT training wrapper & persistence
 │       │       ├── threshold.py        # 1D grid search threshold optimizer
+│       │       ├── source_audit.py     # Source 2 vs Source 3 data composition & noise audit
+│       │       ├── error_analysis.py   # Automated error taxonomy classification (FP & FN)
 │       │       └── pipeline.py         # Streaming train, tune, and test inference engine
-│       ├── tests/                      # Automated test suite (168/168 passing)
+│       ├── tests/                      # Automated test suite (262/262 passing)
 │       │   ├── test_blocking.py
 │       │   ├── test_blocking_extended.py
 │       │   ├── test_blocking_production.py
+│       │   ├── test_candidate_capping.py
 │       │   ├── test_config.py
 │       │   ├── test_dataset_coverage.py
 │       │   ├── test_features.py
+│       │   ├── test_final_training_workflow.py
 │       │   ├── test_integration.py
 │       │   ├── test_metrics.py
 │       │   ├── test_metrics_extended.py
@@ -58,8 +65,12 @@
 │       │   ├── test_normalization.py
 │       │   ├── test_normalization_extended.py
 │       │   ├── test_smoke_e2e.py       # End-to-end smoke test with synthetic dataset
+│       │   ├── test_source_and_error_audit.py
+│       │   ├── test_target_hardening.py
 │       │   ├── test_target_leakage.py
 │       │   └── test_validation_early_stopping.py
+│       ├── scripts/
+│       │   └── audit_inference.py      # Production inference & percentile auditor
 │       ├── evaluate_blocking.py        # Reproducible candidate link recall evaluator
 │       ├── run_pipeline.py             # CLI runner entrypoint
 │       ├── requirements.txt            # Exact pinned dependencies (==)
@@ -122,7 +133,7 @@ pip install -e .
 pytest tests/ -v
 ```
 
-Expected: **226 passed**
+Expected: **262 passed**
 
 ### 3. Measure Blocking Recall (requires dataset)
 
@@ -130,46 +141,46 @@ Expected: **226 passed**
 python evaluate_blocking.py --sample-size 5000 --min-recall 0.88
 ```
 
-#### Measured Empirical Candidate Cap Evaluation (`artifacts/blocking_benchmark_results.json`):
+#### Measured Empirical Candidate Cap Evaluation with Dual-Tier Retention (`artifacts/blocking_benchmark_results.json`):
 
 | Candidate Cap $K$ | Link Recall | S1 Entity Recall | Total Candidates | Avg Cands / Entity | P95 | Missed Links |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **20** | 89.14% | 75.50% | 88,105 | 18.70 | 20.0 | 1,885 |
-| **40** | 89.91% | 77.31% | 162,793 | 34.56 | 40.0 | 1,752 |
-| **60** | 90.13% | 77.84% | 228,692 | 48.54 | 60.0 | 1,713 |
-| **80 (Default)** | **90.39%** | **78.28%** | **288,661** | **61.27** | **80.0** | **1,668** |
-| **100** | 90.54% | 78.56% | 344,636 | 73.16 | 100.0 | 1,643 |
-| **150** | 90.94% | 79.28% | 472,572 | 100.31 | 150.0 | 1,573 |
+| **20** | 91.24% | 77.85% | 89,258 | 18.95 | 20.0 | 1,521 |
+| **40** | 92.48% | 79.80% | 166,242 | 35.29 | 40.0 | 1,306 |
+| **60** | 93.12% | 80.64% | 233,723 | 49.61 | 60.0 | 1,194 |
+| **80 (Default)** | **93.46%** | **81.25%** | **294,735** | **62.56** | **80.0** | **1,136** |
+| **100** | 93.70% | 81.65% | 351,247 | 74.56 | 100.0 | 1,094 |
+| **150** | 94.15% | 82.30% | 480,032 | 101.90 | 150.0 | 1,016 |
 
-*Evaluated on actual ground truth across 217,362 target records with the production 6-channel sub-blocking engine. Breakdown at $K=80$: US Link Recall = 96.99%, India Link Recall = 80.33%, Source 2 = 89.03%, Source 3 = 91.67%. Missed link root causes: missing postal (58.5%), candidate cap (38.6%), missing address (2.0%). CI check passes minimum threshold 88.00%.*
+*Evaluated on actual ground truth across 217,362 target records with the production 6-channel sub-blocking engine and Dual-Tier Priority Retention. At $K=80$, capping loss was slashed from 644 down to 112 (an 82.6% reduction in capping loss).*
 
-### 4. Audit Calibration & Threshold Sensitivity (requires dataset)
+### 4. Run S2/S3 Data Composition & Error Analysis Audits
 
 ```bash
-python evaluate_calibration.py
+# S2 vs S3 composition & noise profiling
+python -m business_entity_resolution.source_audit
+
+# Automated error analysis pipeline (FP & FN taxonomy)
+python -m business_entity_resolution.error_analysis
 ```
 
 Outputs:
-- `artifacts/calibration_audit_results.json`: Full ECE, Brier score, and 2-fold cross-split benchmark.
-- `artifacts/threshold_sensitivity.csv`: Precision, Recall, Macro $F_{0.5}$, and local derivative $|dF_{0.5}/d\tau|$ across thresholds.
-- `artifacts/probability_distribution_summary.csv`: Summary statistics and quantiles for True Positives, Hard Negatives, Singleton Negatives, S2, and S3.
+- `artifacts/source_composition_report.md` & `artifacts/source_composition_report.json`
+- `artifacts/error_analysis_report.md` & `artifacts/validation_errors.json`
 
-### 5. Run Full Pipeline (requires dataset)
+### 5. Run Pipeline (Two-Phase Execution)
 
 ```bash
-# Final production training (enforces 100% of available train_source1 dataset):
-python run_pipeline.py --train --eval --prod
+# Phase A: Development Training (train/val split, early stopping, threshold search):
+python run_pipeline.py --mode dev-train
 
-# Validation/training experiment (custom S1 training limit):
-python run_pipeline.py --train --eval --experiment --train-limit 80000 --val-limit 20000
+# Phase B: Final Production Model (100% full dataset, locked estimators & threshold):
+python run_pipeline.py --mode final-train
 
-# Rapid development run (subsampled for quick iteration):
-python run_pipeline.py --dev --train --eval
+# Phase C: Streaming test inference using saved model:
+python run_pipeline.py --mode predict
 
-# Streaming test inference using trained model:
-python run_pipeline.py --predict
-
-# Or run complete end-to-end pipeline:
+# Or execute complete end-to-end workflow (Phase A -> Phase B -> Phase C):
 python run_pipeline.py --mode all
 ```
 
@@ -190,9 +201,12 @@ Expected output: `PASS — no blocking issues found. Safe to submit.`
 
 All paths are resolved dynamically relative to the repository root — no machine-specific paths in code.
 
-To use a custom dataset location:
+To use custom paths via environment variables:
 ```bash
-DATASET_ROOT=/path/to/your/data python run_pipeline.py --mode all
+export DATASET_ROOT=/path/to/your/data
+export OPTIRESOLVE_OUTPUT_DIR=/path/to/output
+export OPTIRESOLVE_ARTIFACTS_DIR=/path/to/artifacts
+python run_pipeline.py --mode all
 ```
 
 Key hyperparameters (in [`config.py`](code/business_entity_resolution/src/business_entity_resolution/config.py)):
@@ -204,7 +218,7 @@ Key hyperparameters (in [`config.py`](code/business_entity_resolution/src/busine
 | `n_estimators` | 450 | LightGBM trees |
 | `learning_rate` | 0.05 | LightGBM learning rate |
 | `max_negatives_per_positive` | 15 | Hard negative mining ratio |
-| `default_threshold` | 0.910 | Classification threshold (overridden by tuner) |
+| `default_threshold` | 0.780 | Classification threshold ($\tau^* = 0.780$ locked from tuning) |
 
 ---
 
@@ -212,18 +226,18 @@ Key hyperparameters (in [`config.py`](code/business_entity_resolution/src/busine
 
 - ✅ **Zero external data** — no web searches, APIs, or external databases used
 - ✅ **Open-set countries** — France, India, US discovered dynamically; no hardcoded list
-- ✅ **Candidate subset invariant** — every predicted match is verified ∈ candidates
+- ✅ **Candidate subset invariant** — every predicted match is verified $\in$ candidates (0 violations)
 - ✅ **Open-source model only** — LightGBM (MIT license)
-- ✅ **Reproducible** — fixed random seeds, deterministic blocking
+- ✅ **Reproducible** — fixed random seeds, deterministic blocking, dynamic path resolution
+- ✅ **Zero test tuning** — threshold and hyperparameters frozen strictly from validation
 
 ---
 
 ## Known Performance Notes
 
-- **Blocking recall** was empirically measured at 90.87% link recall (79.69% S1 complete entity recall) at K=80 on a 5,000-entity sample across 217,362 targets.
-  Full-dataset recall may vary slightly. Re-measure with `python evaluate_blocking.py`.
+- **Blocking recall** was empirically measured at **93.46% link recall** (81.25% S1 complete entity recall) at K=80 on a 4,711-entity sample across 217,362 targets with Dual-Tier Priority Retention.
 - **Validation Macro F₀.₅ & Threshold Optimization**:
   - Threshold optimization is strictly evaluated on validation predictions with two-phase coarse (0.50–0.99, step 0.01) and fine zoom (step 0.002).
   - Measured optimal threshold: $\tau^* = \mathbf{0.780}$ (Validation Macro $F_{0.5} = \mathbf{0.9426}$, with 61,994 predicted links, 1,513 empty predictions, and 30 singleton false positives out of 20,000 validation S1 entities).
-  - Notice that relying on an assumed $0.910$ default yields only $0.9350$ Macro $F_{0.5}$, whereas optimizing to $\tau^* = 0.780$ provides a $+0.0076$ absolute gain. Full grid history is persisted in `artifacts/optimal_threshold.json`.
+  - Full grid history is persisted in `artifacts/optimal_threshold.json`.
 - **Full-dataset training** takes approximately 30-60 minutes depending on hardware.
