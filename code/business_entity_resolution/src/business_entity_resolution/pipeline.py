@@ -67,13 +67,28 @@ def load_and_preprocess_file(filepath: Path, nrows: Optional[int] = None) -> Lis
     return records
 
 
-def load_ground_truth(filepath: Path, s1_ids_filter: Optional[Set[str]] = None) -> Dict[str, Set[str]]:
-    """Load ground truth mapping {s1_id: set(target_ids)}."""
+def count_file_lines(filepath: Path) -> int:
+    """Fast line count for a TSV file without loading entire content into memory."""
+    if not filepath.exists():
+        return 0
+    with open(filepath, "rb") as f:
+        return sum(chunk.count(b"\n") for chunk in iter(lambda: f.read(1024 * 1024), b""))
+
+
+def load_ground_truth(
+    filepath: Path,
+    s1_ids_filter: Optional[Set[str]] = None,
+    verify_all_s1_present: Optional[Set[str]] = None,
+) -> Dict[str, Set[str]]:
+    """Load ground truth mapping {s1_id: set(target_ids)} with integrity verification."""
     logger.info(f"Loading ground truth from {filepath.name}...")
     df = pd.read_csv(filepath, sep="\t", dtype=str)
     gt: Dict[str, Set[str]] = {}
+    gt_s1_ids: Set[str] = set()
+
     for _, row in df.iterrows():
         s1 = str(row["source1_entity_id"]).strip()
+        gt_s1_ids.add(s1)
         if s1_ids_filter is not None and s1 not in s1_ids_filter:
             continue
         raw_matches = row["matched_entity_ids"]
@@ -81,7 +96,18 @@ def load_ground_truth(filepath: Path, s1_ids_filter: Optional[Set[str]] = None) 
             gt[s1] = set()
         else:
             gt[s1] = {m.strip() for m in str(raw_matches).split(",") if m.strip()}
-    logger.info(f"Ground truth loaded for {len(gt):,} S1 entities.")
+
+    # Requirement 8: If ground-truth IDs are missing from train_source1, fail with clear diagnostic
+    if verify_all_s1_present is not None:
+        missing_ids = gt_s1_ids - verify_all_s1_present
+        if missing_ids:
+            sample_missing = sorted(list(missing_ids))[:5]
+            raise ValueError(
+                f"Ground-truth integrity validation failed: {len(missing_ids):,} S1 entity IDs in "
+                f"{filepath.name} do not exist in train_source1! Examples: {sample_missing}"
+            )
+
+    logger.info(f"Ground truth loaded for {len(gt):,} S1 entities (Total GT S1 IDs in file: {len(gt_s1_ids):,}).")
     return gt
 
 
@@ -147,22 +173,65 @@ class EntityResolutionPipeline:
         """Train pipeline with strict holdout validation and early stopping."""
         logger.info("Starting Pipeline Training Phase...")
 
-        # 1. Load S1 training pool
+        # 1. Inspect total available S1 rows in train_source1
+        total_available_s1 = count_file_lines(self.config.paths.train_source1) - 1
+
+        is_production_full = self.config.is_production and self.config.train_s1_limit is None
+        effective_limit = None if is_production_full else self.config.train_s1_limit
+
         train_s1 = load_and_preprocess_file(
             self.config.paths.train_source1,
-            nrows=self.config.train_s1_limit,
+            nrows=effective_limit,
         )
+        s1_selected = len(train_s1)
+        coverage_pct = (s1_selected / total_available_s1 * 100.0) if total_available_s1 > 0 else 0.0
+
+        # Requirement 6: Assert that final production training uses 100% of available train_source1 rows
+        if is_production_full:
+            assert s1_selected == total_available_s1, (
+                f"Production training assertion failed: final training must use 100% of available "
+                f"train_source1 rows! Selected {s1_selected:,} of {total_available_s1:,} ({coverage_pct:.2f}%)."
+            )
+        elif self.config.is_production and self.config.train_s1_limit is not None:
+            logger.warning(
+                f"Production training limit explicitly overridden by user: {s1_selected:,} / {total_available_s1:,} ({coverage_pct:.2f}%)"
+            )
+
         all_s1_ids = {r["entity_id"] for r in train_s1}
 
-        # 2. Load Ground Truth
-        gt = load_ground_truth(self.config.paths.train_ground_truth, all_s1_ids)
+        # 2. Load Ground Truth and verify S1 ID completeness
+        # Requirement 7 & 8: Verify all ground-truth S1 IDs exist; fail with clear diagnostic if missing
+        verify_ids = all_s1_ids if is_production_full else None
+        gt = load_ground_truth(
+            self.config.paths.train_ground_truth,
+            s1_ids_filter=all_s1_ids,
+            verify_all_s1_present=verify_ids,
+        )
+
+        s1_with_gt = sum(1 for sid in all_s1_ids if sid in gt and len(gt[sid]) > 0)
+        positive_links = sum(len(gt[sid]) for sid in all_s1_ids if sid in gt)
+
+        # Requirement 5: Explicitly log coverage metrics
+        logger.info("============================================================")
+        logger.info("TRAINING DATASET COVERAGE AUDIT:")
+        logger.info(f"  Training Mode:                 {self.config.training_mode.upper()}")
+        logger.info(f"  Total S1 Rows Available:       {total_available_s1:,}")
+        logger.info(f"  S1 Rows Selected:              {s1_selected:,}")
+        logger.info(f"  Training Coverage:             {coverage_pct:.2f}%")
+        logger.info(f"  S1 Entities with Ground Truth: {s1_with_gt:,}")
+        logger.info(f"  Total Positive Links:          {positive_links:,}")
+        logger.info("============================================================")
 
         # 3. SPLIT S1 FIRST into train and holdout validation sets (Prevents Validation Leakage)
         all_s1_list = list(train_s1)
         np.random.seed(self.config.random_seed)
         np.random.shuffle(all_s1_list)
 
-        val_size = min(self.config.val_s1_limit or 5000, max(500, len(all_s1_list) // 5))
+        if self.config.val_s1_limit is not None:
+            val_size = min(self.config.val_s1_limit, max(1, len(all_s1_list) - 1))
+        else:
+            val_size = max(500, len(all_s1_list) // 5)
+
         val_s1 = all_s1_list[:val_size]
         fit_s1 = all_s1_list[val_size:]
 
@@ -330,6 +399,15 @@ class EntityResolutionPipeline:
             "val_negatives": int(len(y_val) - np.sum(y_val)) if y_val is not None else None,
             "train_s1_count": len(fit_s1),
             "val_s1_count": len(val_s1),
+            "training_coverage": {
+                "training_mode": self.config.training_mode,
+                "total_s1_available": int(total_available_s1),
+                "s1_selected": int(s1_selected),
+                "coverage_percentage": float(coverage_pct),
+                "s1_entities_with_gt": int(s1_with_gt),
+                "positive_links": int(positive_links),
+                "negative_pairs": int(len(y_train) - np.sum(y_train)),
+            },
             # Explicitly convert numpy scalar importances to Python float for JSON compatibility
             "feature_importances": {k: float(v) for k, v in importances.items()},
             "early_stopping_best_iteration": int(getattr(self.model.clf, "best_iteration_", 0) or 0),

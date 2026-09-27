@@ -30,9 +30,33 @@ def main():
     parser.add_argument("--train", action="store_true", help="Train the LightGBM entity resolution model")
     parser.add_argument("--eval", action="store_true", help="Run validation and threshold optimization")
     parser.add_argument("--predict", action="store_true", help="Run streaming test inference and output generation")
-    parser.add_argument("--dev", action="store_true", help="Development mode (subsamples train/val for rapid execution)")
-    parser.add_argument("--train-limit", type=int, default=None, help="Explicit max S1 entities for training (None = full)")
-    parser.add_argument("--val-limit", type=int, default=None, help="Explicit max S1 entities for validation (None = full)")
+
+    # Explicit training modes (Requirement 3)
+    parser.add_argument(
+        "--training-mode",
+        choices=["production", "experiment", "development"],
+        default=None,
+        help="Explicit training mode profile (production: 100% full dataset; experiment: custom limits; development: subsampled quick run)",
+    )
+    parser.add_argument(
+        "--prod", "--production",
+        action="store_true",
+        dest="prod",
+        help="Final production training (enforces 100% of available train_source1 rows without silent truncation)",
+    )
+    parser.add_argument(
+        "--experiment",
+        action="store_true",
+        help="Validation/training experiment mode (allows custom S1 limits via --train-limit and --val-limit)",
+    )
+    parser.add_argument(
+        "--dev",
+        action="store_true",
+        help="Development training mode (subsamples train/val for rapid execution: 50k train / 10k val)",
+    )
+
+    parser.add_argument("--train-limit", type=int, default=None, help="Explicit max S1 entities for training (None = 100% full dataset in production)")
+    parser.add_argument("--val-limit", type=int, default=None, help="Explicit max S1 entities for validation (None = proportional 20% holdout)")
     parser.add_argument("--threshold", type=float, default=None, help="Explicit threshold override")
     parser.add_argument("--batch-size", type=int, default=50000, help="Batch size for streaming test inference")
     args = parser.parse_args()
@@ -60,12 +84,20 @@ def main():
 
     config = PipelineConfig()
 
-    if args.dev:
-        config.train_s1_limit = 50000
-        config.val_s1_limit = 10000
-    else:
+    # Explicitly configure training mode and dataset limits (Requirements 1, 2, 3)
+    if args.dev or args.training_mode == "development":
+        config.training_mode = "development"
+        config.train_s1_limit = args.train_limit or 50000
+        config.val_s1_limit = args.val_limit or 10000
+    elif args.experiment or args.train_limit is not None or args.val_limit is not None or args.training_mode == "experiment":
+        config.training_mode = "experiment"
         config.train_s1_limit = args.train_limit
         config.val_s1_limit = args.val_limit
+    else:
+        # Default: Final Production Training (100% of available dataset used)
+        config.training_mode = "production"
+        config.train_s1_limit = None
+        config.val_s1_limit = None
 
     if args.threshold is not None:
         config.default_threshold = args.threshold

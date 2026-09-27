@@ -88,17 +88,20 @@ python evaluate_blocking.py
 
 ### Run Pipeline:
 ```bash
-# Training and validation threshold tuning:
-python run_pipeline.py --train --eval
+# Final production training (enforces 100% of available train_source1 dataset):
+python run_pipeline.py --train --eval --prod
+
+# Validation/training experiment (custom S1 training limit):
+python run_pipeline.py --train --eval --experiment --train-limit 80000 --val-limit 20000
+
+# Rapid development run (subsampled for quick iteration):
+python run_pipeline.py --dev --train --eval
 
 # Streaming test inference using trained model:
 python run_pipeline.py --predict
 
 # Or run complete end-to-end pipeline:
 python run_pipeline.py --mode all
-
-# Rapid development run:
-python run_pipeline.py --mode all --dev
 ```
 
 ### Validate Outputs:

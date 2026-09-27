@@ -129,7 +129,10 @@ class PipelineConfig:
     model: ModelConfig = field(default_factory=ModelConfig)
     random_seed: int = 42
 
-    # None = full scale execution
+    # Training execution mode: "production" (100% full dataset), "experiment", or "development"
+    training_mode: str = "production"
+
+    # None = full scale execution (100% of available dataset used in production)
     train_s1_limit: Optional[int] = None
     val_s1_limit: Optional[int] = None
     max_negatives_per_positive: int = 15
@@ -139,3 +142,15 @@ class PipelineConfig:
     threshold_search_end: float = 0.96
     threshold_search_step: float = 0.02
     default_threshold: float = 0.910
+
+    @property
+    def is_production(self) -> bool:
+        return self.training_mode == "production"
+
+    @property
+    def is_development(self) -> bool:
+        return self.training_mode == "development"
+
+    @property
+    def is_experiment(self) -> bool:
+        return self.training_mode == "experiment"

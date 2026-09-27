@@ -5,7 +5,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Validation Status](https://img.shields.io/badge/Validator-PASS-brightgreen.svg)]()
-[![Tests](https://img.shields.io/badge/Tests-117%2F117%20Passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-126%2F126%20Passed-brightgreen.svg)]()
 
 ---
 
@@ -116,7 +116,7 @@ pip install -e .
 pytest tests/ -v
 ```
 
-Expected: **117 passed**
+Expected: **126 passed**
 
 ### 3. Measure Blocking Recall (requires dataset)
 
@@ -127,17 +127,20 @@ python evaluate_blocking.py
 ### 4. Run Full Pipeline (requires dataset)
 
 ```bash
-# Training and validation threshold tuning:
-python run_pipeline.py --train --eval
+# Final production training (enforces 100% of available train_source1 dataset):
+python run_pipeline.py --train --eval --prod
+
+# Validation/training experiment (custom S1 training limit):
+python run_pipeline.py --train --eval --experiment --train-limit 80000 --val-limit 20000
+
+# Rapid development run (subsampled for quick iteration):
+python run_pipeline.py --dev --train --eval
 
 # Streaming test inference using trained model:
 python run_pipeline.py --predict
 
 # Or run complete end-to-end pipeline:
 python run_pipeline.py --mode all
-
-# Rapid development run (subsampled for quick iteration):
-python run_pipeline.py --mode all --dev
 ```
 
 ### 5. Validate Submission Files
