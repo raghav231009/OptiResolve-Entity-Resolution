@@ -113,7 +113,7 @@ def load_targeted_training_targets(
                 take_n = min(len(other_rows), min(10000, background_sample_per_file - bg_loaded))
                 for r in other_rows.iloc[:take_n].to_dict("records"):
                     targets.append(preprocess_record(r))
-                    bg_loaded += take_n
+                bg_loaded += take_n  # increment once per chunk-slice, not per record
 
     logger.info(f"Targeted loading complete: {len(targets):,} records loaded (Missing true targets: {len(remaining_needed)}).")
     return targets
@@ -319,9 +319,9 @@ class EntityResolutionPipeline:
         # Persist comprehensive training results for reproducibility (Issue #15)
         results_path = self.config.paths.artifacts_dir / "training_results.json"
         training_results = {
-            "validation_macro_f05": best_score,
-            "optimal_threshold": best_tau,
-            "threshold_search_history": {str(k): v for k, v in history.items()},
+            "validation_macro_f05": float(best_score),
+            "optimal_threshold": float(best_tau),
+            "threshold_search_history": {str(k): float(v) for k, v in history.items()},
             "train_matrix_shape": list(X_train.shape),
             "train_positives": int(np.sum(y_train)),
             "train_negatives": int(len(y_train) - np.sum(y_train)),
@@ -330,8 +330,9 @@ class EntityResolutionPipeline:
             "val_negatives": int(len(y_val) - np.sum(y_val)) if y_val is not None else None,
             "train_s1_count": len(fit_s1),
             "val_s1_count": len(val_s1),
-            "feature_importances": importances,
-            "early_stopping_best_iteration": getattr(self.model.clf, "best_iteration_", None),
+            # Explicitly convert numpy scalar importances to Python float for JSON compatibility
+            "feature_importances": {k: float(v) for k, v in importances.items()},
+            "early_stopping_best_iteration": int(getattr(self.model.clf, "best_iteration_", 0) or 0),
             "blocking_config": {
                 "max_candidates_per_entity": self.config.blocking.max_candidates_per_entity,
                 "max_block_size": self.config.blocking.max_block_size,

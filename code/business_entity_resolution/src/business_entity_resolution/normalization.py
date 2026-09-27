@@ -7,17 +7,27 @@ import re
 import unicodedata
 from typing import Set, Tuple
 
-# Comprehensive corporate suffix patterns
+# Comprehensive corporate suffix patterns (applied after lowercasing).
+# NOTE: 'fils' is intentionally excluded from the main pattern and handled
+# separately via TRAILING_FILS_REGEX to avoid stripping from mid-name brand
+# tokens like 'Le Fils Dupont' (a legitimate French family-business name).
 LEGAL_SUFFIX_REGEX = re.compile(
     r"\b("
-    # Multilingual / US / UK
+    # Multi-word Indian suffixes (must precede shorter overlaps)
     r"private limited|pvt ltd|pvt\.?\s*ltd\.?|"
     r"limited liability company|limited|ltd\.?|"
     r"incorporated|inc\.?|corporation|corp\.?|"
     r"company|co\.?|llc|llp|plc|gmbh|"
-    # French corporate forms
-    r"sarl|sas|sasu|sa|eurl|sci|snc|gie|fils"
+    # French corporate forms (fils excluded here)
+    r"sarl|sas|sasu|sa|eurl|sci|snc|gie"
     r")\b",
+    re.IGNORECASE,
+)
+
+# Strip 'fils' / 'et fils' / '& fils' only when trailing (end-of-name position)
+# to avoid falsely stripping 'Le Fils Dupont'-style brand names.
+TRAILING_FILS_REGEX = re.compile(
+    r"(\s+(?:et\s+|and\s+|&\s+)?fils)\s*$",
     re.IGNORECASE,
 )
 
@@ -78,12 +88,23 @@ def normalize_address(address: str) -> str:
 def clean_business_name(name: str) -> Tuple[str, str]:
     """
     Returns (cleaned_name, root_name_without_legal_suffixes).
+
+    Applies two-pass suffix stripping:
+      1. Main LEGAL_SUFFIX_REGEX removes most common suffixes (LLC, Ltd, SARL, etc.)
+      2. TRAILING_FILS_REGEX removes trailing 'fils'/'et fils' only at end-of-name
+         (avoids falsely stripping 'Le Fils Dupont'-style brand names).
+
     Example: 'Maure Williams Colombier Inc' -> ('maure williams colombier inc', 'maure williams colombier')
+    Example: 'Dupont et Fils SARL' -> ('dupont et fils sarl', 'dupont')
+    Example: 'Le Fils Dupont' -> ('le fils dupont', 'le fils dupont')  # fils NOT stripped mid-name
     """
     cleaned = strip_accents_and_normalize(name)
     if not cleaned:
         return "", ""
+    # Pass 1: strip common legal suffixes
     root = LEGAL_SUFFIX_REGEX.sub(" ", cleaned)
+    # Pass 2: strip trailing 'fils'/'et fils' only at end
+    root = TRAILING_FILS_REGEX.sub("", root)
     root = WHITESPACE_REGEX.sub(" ", root).strip()
     return cleaned, root if root else cleaned
 

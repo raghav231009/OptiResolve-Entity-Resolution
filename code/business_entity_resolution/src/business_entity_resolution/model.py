@@ -49,19 +49,23 @@ class EntityResolutionModel:
             verbose=-1,
         )
 
-        eval_set = [(X_val, y_val)] if (X_val is not None and y_val is not None) else None
-        callbacks = [lgb.early_stopping(stopping_rounds=30, verbose=True)] if eval_set else None
+        # Build eval arguments: use new eval_X/eval_y API (eval_set deprecated in LightGBM>=4.4)
+        has_val = X_val is not None and y_val is not None
+        callbacks = [lgb.early_stopping(stopping_rounds=30, verbose=True)] if has_val else None
 
         self.clf.fit(
             X_train,
             y_train,
-            eval_set=eval_set,
-            eval_names=["val"] if eval_set else None,
+            eval_X=X_val if has_val else None,
+            eval_y=y_val if has_val else None,
+            eval_names=["val"] if has_val else None,
             callbacks=callbacks,
         )
 
-        if eval_set and hasattr(self.clf, "best_iteration_"):
-            val_loss = self.clf.best_score_.get("val", {}).get("binary_logloss", "N/A")
+        if has_val and hasattr(self.clf, "best_iteration_"):
+            # best_score_ structure: {eval_set_name: {metric_name: score}}
+            val_scores = self.clf.best_score_ or {}
+            val_loss = val_scores.get("val", {}).get("binary_logloss", "N/A")
             logger.info(f"Early stopping confirmed: Best iteration = {self.clf.best_iteration_} | Best validation score = {val_loss}")
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:

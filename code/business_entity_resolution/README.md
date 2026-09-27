@@ -17,7 +17,7 @@ This solution resolves noisy business records across three independent data sour
 4. **C-Accelerated Feature Extraction:** 23-dimensional pairwise feature vector: RapidFuzz distance metrics, character 3-gram/4-gram Jaccard, token containment, postal code matches, and building number exact matches.
 5. **Precision-Tuned LightGBM GBDT with Early Stopping:** Trained with targeted positive coverage and hard-negative mining, actively monitored with early stopping (30 stopping rounds) against an isolated holdout validation set.
 6. **Strict Validation Isolation:** Training and validation target pools and blockers are built independently with zero target leakage.
-7. **Singleton-Aware Threshold Optimization:** Evaluates exact competition Macro $F_{0.5}$, penalizing singleton false positives from $1.0$ down to $0.0$, tuning the classification threshold for high precision ($\tau^* = 0.910$).
+7. **Singleton-Aware Threshold Optimization:** Evaluates exact competition Macro $F_{0.5}$, penalizing singleton false positives from $1.0$ down to $0.0$, tuning the classification threshold for high precision. Optimal $\tau^*$ is discovered per-run and written to `artifacts/optimal_threshold.json`.
 8. **Candidate Safety Cap (K = 80):** High-recall safety cap ($K = 80$, achieving 97.6% link recall) with Priority Tier Retention to protect true physical and root name matches from truncation.
 9. **Chunked Streaming Test Inference:** Scalable test processing in chunks to maintain low memory footprint without OOM.
 
@@ -45,10 +45,17 @@ code/business_entity_resolution/
 │       └── pipeline.py         # End-to-end streaming training & inference
 └── tests/
     ├── __init__.py
-    ├── test_blocking.py        # Candidate blocking & safety cap tests
-    ├── test_metrics.py         # Metric calculation tests
-    ├── test_normalization.py   # Multilingual normalization tests
-    └── test_integration.py     # End-to-end integration and smoke tests
+    ├── test_blocking.py            # Candidate blocking & safety cap tests
+    ├── test_blocking_extended.py   # Extended blocking: country isolation, S2/S3, determinism
+    ├── test_config.py              # Path resolution & config defaults
+    ├── test_features.py            # 23-dim feature vector, missing value semantics
+    ├── test_integration.py         # End-to-end integration and smoke tests
+    ├── test_metrics.py             # Metric calculation tests
+    ├── test_metrics_extended.py    # Extended edge cases for F0.5 formula
+    ├── test_model.py               # LightGBM training, save/load, predict
+    ├── test_normalization.py       # Multilingual normalization tests
+    ├── test_normalization_extended.py  # Extended: fils, postal, building number edge cases
+    └── test_smoke_e2e.py           # Full pipeline smoke test with synthetic dataset
 ```
 
 ---
