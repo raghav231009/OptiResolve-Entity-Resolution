@@ -13,8 +13,8 @@
 
 > **Note:** Performance numbers reflect the last full-dataset run. The stored artifact (`artifacts/optimal_threshold.json`) is the authoritative source after each run.
 
-- **Holdout Validation Macro $F_{0.5}$:** `0.9447` (measured from `artifacts/optimal_threshold.json` and `artifacts/training_results.json`).
-- **Optimal Threshold $\tau^*$:** `0.730` (precision-heavy calibration; re-tuned per run).
+- **Holdout Validation Macro $F_{0.5}$:** `0.9417` (measured from `artifacts/optimal_threshold.json` and `artifacts/training_results.json`).
+- **Optimal Threshold $\tau^*$:** `0.750` (precision-heavy calibration; re-tuned per run).
 - **Blocking Link Recall:** `91.40%` link recall (`80.75%` entity complete recall) at production safety cap $K=80$ (reproducible via `evaluate_blocking.py`).
 - **Production Candidate Cap:** $K = 80$ with Priority Tier Retention to safeguard true matches.
 - **Validation Isolation:** Independent target extraction and blocker indexing for train vs. holdout validation sets (zero leakage).
