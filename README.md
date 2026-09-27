@@ -122,26 +122,26 @@ pip install -e .
 pytest tests/ -v
 ```
 
-Expected: **218 passed**
+Expected: **226 passed**
 
 ### 3. Measure Blocking Recall (requires dataset)
 
 ```bash
-python evaluate_blocking.py
+python evaluate_blocking.py --sample-size 5000 --min-recall 0.88
 ```
 
-#### Measured Empirical Candidate Cap Evaluation (`blocking_recall_results.json`):
+#### Measured Empirical Candidate Cap Evaluation (`artifacts/blocking_benchmark_results.json`):
 
-| Candidate Cap $K$ | Link Recall | S1 Entity Recall | Total Candidates | Avg Cands / Entity | P95 | P99 |
+| Candidate Cap $K$ | Link Recall | S1 Entity Recall | Total Candidates | Avg Cands / Entity | P95 | Missed Links |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **20** | 89.55% | 76.71% | 89,258 | 18.95 | 20.0 | 20.0 |
-| **40** | 90.36% | 78.60% | 166,242 | 35.29 | 40.0 | 40.0 |
-| **60** | 90.58% | 79.13% | 233,723 | 49.61 | 60.0 | 60.0 |
-| **80 (Default)** | **90.87%** | **79.69%** | 294,735 | 62.56 | 80.0 | 80.0 |
-| **100** | 91.04% | 79.94% | 351,247 | 74.56 | 100.0 | 100.0 |
-| **150** | 91.45% | 80.70% | 480,032 | 101.90 | 150.0 | 150.0 |
+| **20** | 89.14% | 75.50% | 88,105 | 18.70 | 20.0 | 1,885 |
+| **40** | 89.91% | 77.31% | 162,793 | 34.56 | 40.0 | 1,752 |
+| **60** | 90.13% | 77.84% | 228,692 | 48.54 | 60.0 | 1,713 |
+| **80 (Default)** | **90.39%** | **78.28%** | **288,661** | **61.27** | **80.0** | **1,668** |
+| **100** | 90.54% | 78.56% | 344,636 | 73.16 | 100.0 | 1,643 |
+| **150** | 90.94% | 79.28% | 472,572 | 100.31 | 150.0 | 1,573 |
 
-*Evaluated on actual ground truth across 217,362 target records with the production 6-channel sub-blocking engine.*
+*Evaluated on actual ground truth across 217,362 target records with the production 6-channel sub-blocking engine. Breakdown at $K=80$: US Link Recall = 96.99%, India Link Recall = 80.33%, Source 2 = 89.03%, Source 3 = 91.67%. Missed link root causes: missing postal (58.5%), candidate cap (38.6%), missing address (2.0%). CI check passes minimum threshold 88.00%.*
 
 ### 4. Audit Calibration & Threshold Sensitivity (requires dataset)
 

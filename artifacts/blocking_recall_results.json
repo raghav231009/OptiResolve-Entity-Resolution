@@ -1,7 +1,8 @@
 {
-  "evaluated_at": "2026-09-27T05:54:53.829124+00:00",
+  "evaluated_at": "2026-09-27T06:33:21.362462+00:00",
   "sample_size": 5000,
   "matched_entities_evaluated": 4711,
+  "singletons_evaluated": 289,
   "total_true_links": 17362,
   "total_targets_loaded": 217362,
   "production_config": {
@@ -10,96 +11,642 @@
     "min_token_len": 3,
     "name_prefix_len": 4
   },
-  "results": [
+  "results_by_k": [
     {
       "K": 20,
-      "link_recall": 0.895461,
-      "link_recall_pct": "89.55%",
-      "entity_recall": 0.767141,
-      "entity_recall_pct": "76.71%",
-      "recovered_links": 15547,
+      "link_recall": 0.89143,
+      "link_recall_pct": "89.14%",
+      "entity_recall": 0.755041,
+      "entity_recall_pct": "75.50%",
+      "recovered_links": 15477,
       "total_true_links": 17362,
-      "entities_with_complete_recall": 3614,
+      "missed_true_links": 1885,
+      "entities_with_complete_recall": 3557,
       "entities_evaluated": 4711,
-      "candidate_count": 89258,
-      "average_candidates_per_entity": 18.95,
+      "candidate_count": 88105,
+      "average_candidates_per_entity": 18.7,
       "p95_candidates_per_entity": 20.0,
-      "p99_candidates_per_entity": 20.0
+      "p99_candidates_per_entity": 20.0,
+      "singleton_statistics": {
+        "singletons_evaluated": 289,
+        "singleton_recall": 1.0,
+        "singleton_avg_candidates": 18.88,
+        "singleton_pct_zero_candidates": 0.0
+      },
+      "missed_links_by_category": {
+        "missing_postal": 977,
+        "candidate_cap": 859,
+        "missing_address": 35,
+        "oversized_block": 3,
+        "normalization": 9,
+        "building_mismatch": 1,
+        "name_corruption": 1
+      }
     },
     {
       "K": 40,
-      "link_recall": 0.903583,
-      "link_recall_pct": "90.36%",
-      "entity_recall": 0.786033,
-      "entity_recall_pct": "78.60%",
-      "recovered_links": 15688,
+      "link_recall": 0.89909,
+      "link_recall_pct": "89.91%",
+      "entity_recall": 0.773084,
+      "entity_recall_pct": "77.31%",
+      "recovered_links": 15610,
       "total_true_links": 17362,
-      "entities_with_complete_recall": 3703,
+      "missed_true_links": 1752,
+      "entities_with_complete_recall": 3642,
       "entities_evaluated": 4711,
-      "candidate_count": 166242,
-      "average_candidates_per_entity": 35.29,
+      "candidate_count": 162793,
+      "average_candidates_per_entity": 34.56,
       "p95_candidates_per_entity": 40.0,
-      "p99_candidates_per_entity": 40.0
+      "p99_candidates_per_entity": 40.0,
+      "singleton_statistics": {
+        "singletons_evaluated": 289,
+        "singleton_recall": 1.0,
+        "singleton_avg_candidates": 35.42,
+        "singleton_pct_zero_candidates": 0.0
+      },
+      "missed_links_by_category": {
+        "missing_postal": 977,
+        "candidate_cap": 727,
+        "missing_address": 34,
+        "oversized_block": 3,
+        "normalization": 9,
+        "building_mismatch": 1,
+        "name_corruption": 1
+      }
     },
     {
       "K": 60,
-      "link_recall": 0.905771,
-      "link_recall_pct": "90.58%",
-      "entity_recall": 0.791339,
-      "entity_recall_pct": "79.13%",
-      "recovered_links": 15726,
+      "link_recall": 0.901336,
+      "link_recall_pct": "90.13%",
+      "entity_recall": 0.778391,
+      "entity_recall_pct": "77.84%",
+      "recovered_links": 15649,
       "total_true_links": 17362,
-      "entities_with_complete_recall": 3728,
+      "missed_true_links": 1713,
+      "entities_with_complete_recall": 3667,
       "entities_evaluated": 4711,
-      "candidate_count": 233723,
-      "average_candidates_per_entity": 49.61,
+      "candidate_count": 228692,
+      "average_candidates_per_entity": 48.54,
       "p95_candidates_per_entity": 60.0,
-      "p99_candidates_per_entity": 60.0
+      "p99_candidates_per_entity": 60.0,
+      "singleton_statistics": {
+        "singletons_evaluated": 289,
+        "singleton_recall": 1.0,
+        "singleton_avg_candidates": 50.29,
+        "singleton_pct_zero_candidates": 0.0
+      },
+      "missed_links_by_category": {
+        "missing_postal": 977,
+        "candidate_cap": 688,
+        "missing_address": 34,
+        "oversized_block": 3,
+        "normalization": 9,
+        "building_mismatch": 1,
+        "name_corruption": 1
+      }
     },
     {
       "K": 80,
-      "link_recall": 0.908709,
-      "link_recall_pct": "90.87%",
-      "entity_recall": 0.796858,
-      "entity_recall_pct": "79.69%",
-      "recovered_links": 15777,
+      "link_recall": 0.903928,
+      "link_recall_pct": "90.39%",
+      "entity_recall": 0.782849,
+      "entity_recall_pct": "78.28%",
+      "recovered_links": 15694,
       "total_true_links": 17362,
-      "entities_with_complete_recall": 3754,
+      "missed_true_links": 1668,
+      "entities_with_complete_recall": 3688,
       "entities_evaluated": 4711,
-      "candidate_count": 294735,
-      "average_candidates_per_entity": 62.56,
+      "candidate_count": 288661,
+      "average_candidates_per_entity": 61.27,
       "p95_candidates_per_entity": 80.0,
-      "p99_candidates_per_entity": 80.0
+      "p99_candidates_per_entity": 80.0,
+      "singleton_statistics": {
+        "singletons_evaluated": 289,
+        "singleton_recall": 1.0,
+        "singleton_avg_candidates": 64.15,
+        "singleton_pct_zero_candidates": 0.0
+      },
+      "missed_links_by_category": {
+        "missing_postal": 976,
+        "candidate_cap": 644,
+        "missing_address": 34,
+        "oversized_block": 3,
+        "normalization": 9,
+        "building_mismatch": 1,
+        "name_corruption": 1
+      }
     },
     {
       "K": 100,
-      "link_recall": 0.910437,
-      "link_recall_pct": "91.04%",
-      "entity_recall": 0.799406,
-      "entity_recall_pct": "79.94%",
-      "recovered_links": 15807,
+      "link_recall": 0.905368,
+      "link_recall_pct": "90.54%",
+      "entity_recall": 0.785608,
+      "entity_recall_pct": "78.56%",
+      "recovered_links": 15719,
       "total_true_links": 17362,
-      "entities_with_complete_recall": 3766,
+      "missed_true_links": 1643,
+      "entities_with_complete_recall": 3701,
       "entities_evaluated": 4711,
-      "candidate_count": 351247,
-      "average_candidates_per_entity": 74.56,
+      "candidate_count": 344636,
+      "average_candidates_per_entity": 73.16,
       "p95_candidates_per_entity": 100.0,
-      "p99_candidates_per_entity": 100.0
+      "p99_candidates_per_entity": 100.0,
+      "singleton_statistics": {
+        "singletons_evaluated": 289,
+        "singleton_recall": 1.0,
+        "singleton_avg_candidates": 77.47,
+        "singleton_pct_zero_candidates": 0.0
+      },
+      "missed_links_by_category": {
+        "missing_postal": 976,
+        "candidate_cap": 619,
+        "missing_address": 34,
+        "oversized_block": 3,
+        "normalization": 9,
+        "building_mismatch": 1,
+        "name_corruption": 1
+      }
     },
     {
       "K": 150,
-      "link_recall": 0.914526,
-      "link_recall_pct": "91.45%",
-      "entity_recall": 0.807047,
-      "entity_recall_pct": "80.70%",
-      "recovered_links": 15878,
+      "link_recall": 0.9094,
+      "link_recall_pct": "90.94%",
+      "entity_recall": 0.792825,
+      "entity_recall_pct": "79.28%",
+      "recovered_links": 15789,
       "total_true_links": 17362,
-      "entities_with_complete_recall": 3802,
+      "missed_true_links": 1573,
+      "entities_with_complete_recall": 3735,
       "entities_evaluated": 4711,
-      "candidate_count": 480032,
-      "average_candidates_per_entity": 101.9,
+      "candidate_count": 472572,
+      "average_candidates_per_entity": 100.31,
       "p95_candidates_per_entity": 150.0,
-      "p99_candidates_per_entity": 150.0
+      "p99_candidates_per_entity": 150.0,
+      "singleton_statistics": {
+        "singletons_evaluated": 289,
+        "singleton_recall": 1.0,
+        "singleton_avg_candidates": 108.81,
+        "singleton_pct_zero_candidates": 0.0
+      },
+      "missed_links_by_category": {
+        "missing_postal": 975,
+        "candidate_cap": 550,
+        "missing_address": 34,
+        "oversized_block": 3,
+        "normalization": 9,
+        "building_mismatch": 1,
+        "name_corruption": 1
+      }
     }
-  ]
+  ],
+  "country_breakdown_by_k": {
+    "20": {
+      "US": {
+        "link_recall": 0.957948,
+        "link_recall_pct": "95.79%",
+        "entity_recall": 0.87237,
+        "entity_recall_pct": "87.24%",
+        "true_links": 10487,
+        "recovered_links": 10046,
+        "total_entities": 2852,
+        "complete_entities": 2488
+      },
+      "INDIA": {
+        "link_recall": 0.789964,
+        "link_recall_pct": "79.00%",
+        "entity_recall": 0.57504,
+        "entity_recall_pct": "57.50%",
+        "true_links": 6875,
+        "recovered_links": 5431,
+        "total_entities": 1859,
+        "complete_entities": 1069
+      }
+    },
+    "40": {
+      "US": {
+        "link_recall": 0.966149,
+        "link_recall_pct": "96.61%",
+        "entity_recall": 0.895161,
+        "entity_recall_pct": "89.52%",
+        "true_links": 10487,
+        "recovered_links": 10132,
+        "total_entities": 2852,
+        "complete_entities": 2553
+      },
+      "INDIA": {
+        "link_recall": 0.7968,
+        "link_recall_pct": "79.68%",
+        "entity_recall": 0.585799,
+        "entity_recall_pct": "58.58%",
+        "true_links": 6875,
+        "recovered_links": 5478,
+        "total_entities": 1859,
+        "complete_entities": 1089
+      }
+    },
+    "60": {
+      "US": {
+        "link_recall": 0.968628,
+        "link_recall_pct": "96.86%",
+        "entity_recall": 0.902525,
+        "entity_recall_pct": "90.25%",
+        "true_links": 10487,
+        "recovered_links": 10158,
+        "total_entities": 2852,
+        "complete_entities": 2574
+      },
+      "INDIA": {
+        "link_recall": 0.798691,
+        "link_recall_pct": "79.87%",
+        "entity_recall": 0.587951,
+        "entity_recall_pct": "58.80%",
+        "true_links": 6875,
+        "recovered_links": 5491,
+        "total_entities": 1859,
+        "complete_entities": 1093
+      }
+    },
+    "80": {
+      "US": {
+        "link_recall": 0.969867,
+        "link_recall_pct": "96.99%",
+        "entity_recall": 0.906381,
+        "entity_recall_pct": "90.64%",
+        "true_links": 10487,
+        "recovered_links": 10171,
+        "total_entities": 2852,
+        "complete_entities": 2585
+      },
+      "INDIA": {
+        "link_recall": 0.803345,
+        "link_recall_pct": "80.33%",
+        "entity_recall": 0.59333,
+        "entity_recall_pct": "59.33%",
+        "true_links": 6875,
+        "recovered_links": 5523,
+        "total_entities": 1859,
+        "complete_entities": 1103
+      }
+    },
+    "100": {
+      "US": {
+        "link_recall": 0.970344,
+        "link_recall_pct": "97.03%",
+        "entity_recall": 0.908135,
+        "entity_recall_pct": "90.81%",
+        "true_links": 10487,
+        "recovered_links": 10176,
+        "total_entities": 2852,
+        "complete_entities": 2590
+      },
+      "INDIA": {
+        "link_recall": 0.806255,
+        "link_recall_pct": "80.63%",
+        "entity_recall": 0.597633,
+        "entity_recall_pct": "59.76%",
+        "true_links": 6875,
+        "recovered_links": 5543,
+        "total_entities": 1859,
+        "complete_entities": 1111
+      }
+    },
+    "150": {
+      "US": {
+        "link_recall": 0.971298,
+        "link_recall_pct": "97.13%",
+        "entity_recall": 0.91094,
+        "entity_recall_pct": "91.09%",
+        "true_links": 10487,
+        "recovered_links": 10186,
+        "total_entities": 2852,
+        "complete_entities": 2598
+      },
+      "INDIA": {
+        "link_recall": 0.814982,
+        "link_recall_pct": "81.50%",
+        "entity_recall": 0.611619,
+        "entity_recall_pct": "61.16%",
+        "true_links": 6875,
+        "recovered_links": 5603,
+        "total_entities": 1859,
+        "complete_entities": 1137
+      }
+    }
+  },
+  "source_breakdown_by_k": {
+    "20": {
+      "S2": {
+        "link_recall": 0.878313,
+        "link_recall_pct": "87.83%",
+        "true_links": 8415,
+        "recovered_links": 7391
+      },
+      "S3": {
+        "link_recall": 0.903767,
+        "link_recall_pct": "90.38%",
+        "true_links": 8947,
+        "recovered_links": 8086
+      }
+    },
+    "40": {
+      "S2": {
+        "link_recall": 0.884967,
+        "link_recall_pct": "88.50%",
+        "true_links": 8415,
+        "recovered_links": 7447
+      },
+      "S3": {
+        "link_recall": 0.912373,
+        "link_recall_pct": "91.24%",
+        "true_links": 8947,
+        "recovered_links": 8163
+      }
+    },
+    "60": {
+      "S2": {
+        "link_recall": 0.887225,
+        "link_recall_pct": "88.72%",
+        "true_links": 8415,
+        "recovered_links": 7466
+      },
+      "S3": {
+        "link_recall": 0.914608,
+        "link_recall_pct": "91.46%",
+        "true_links": 8947,
+        "recovered_links": 8183
+      }
+    },
+    "80": {
+      "S2": {
+        "link_recall": 0.890315,
+        "link_recall_pct": "89.03%",
+        "true_links": 8415,
+        "recovered_links": 7492
+      },
+      "S3": {
+        "link_recall": 0.916732,
+        "link_recall_pct": "91.67%",
+        "true_links": 8947,
+        "recovered_links": 8202
+      }
+    },
+    "100": {
+      "S2": {
+        "link_recall": 0.89186,
+        "link_recall_pct": "89.19%",
+        "true_links": 8415,
+        "recovered_links": 7505
+      },
+      "S3": {
+        "link_recall": 0.918073,
+        "link_recall_pct": "91.81%",
+        "true_links": 8947,
+        "recovered_links": 8214
+      }
+    },
+    "150": {
+      "S2": {
+        "link_recall": 0.896613,
+        "link_recall_pct": "89.66%",
+        "true_links": 8415,
+        "recovered_links": 7545
+      },
+      "S3": {
+        "link_recall": 0.921426,
+        "link_recall_pct": "92.14%",
+        "true_links": 8947,
+        "recovered_links": 8244
+      }
+    }
+  },
+  "cardinality_breakdown_by_k": {
+    "20": {
+      "1": {
+        "link_recall": 0.844106,
+        "link_recall_pct": "84.41%",
+        "entity_recall": 0.844106,
+        "entity_recall_pct": "84.41%",
+        "entities": 263,
+        "true_links": 263,
+        "recovered_links": 222
+      },
+      "2": {
+        "link_recall": 0.878641,
+        "link_recall_pct": "87.86%",
+        "entity_recall": 0.800971,
+        "entity_recall_pct": "80.10%",
+        "entities": 824,
+        "true_links": 1648,
+        "recovered_links": 1448
+      },
+      "3": {
+        "link_recall": 0.895609,
+        "link_recall_pct": "89.56%",
+        "entity_recall": 0.782933,
+        "entity_recall_pct": "78.29%",
+        "entities": 1207,
+        "true_links": 3621,
+        "recovered_links": 3243
+      },
+      "4+": {
+        "link_recall": 0.892984,
+        "link_recall_pct": "89.30%",
+        "entity_recall": 0.715763,
+        "entity_recall_pct": "71.58%",
+        "entities": 2417,
+        "true_links": 11830,
+        "recovered_links": 10564
+      }
+    },
+    "40": {
+      "1": {
+        "link_recall": 0.855513,
+        "link_recall_pct": "85.55%",
+        "entity_recall": 0.855513,
+        "entity_recall_pct": "85.55%",
+        "entities": 263,
+        "true_links": 263,
+        "recovered_links": 225
+      },
+      "2": {
+        "link_recall": 0.882282,
+        "link_recall_pct": "88.23%",
+        "entity_recall": 0.807039,
+        "entity_recall_pct": "80.70%",
+        "entities": 824,
+        "true_links": 1648,
+        "recovered_links": 1454
+      },
+      "3": {
+        "link_recall": 0.903065,
+        "link_recall_pct": "90.31%",
+        "entity_recall": 0.799503,
+        "entity_recall_pct": "79.95%",
+        "entities": 1207,
+        "true_links": 3621,
+        "recovered_links": 3270
+      },
+      "4+": {
+        "link_recall": 0.901183,
+        "link_recall_pct": "90.12%",
+        "entity_recall": 0.739346,
+        "entity_recall_pct": "73.93%",
+        "entities": 2417,
+        "true_links": 11830,
+        "recovered_links": 10661
+      }
+    },
+    "60": {
+      "1": {
+        "link_recall": 0.855513,
+        "link_recall_pct": "85.55%",
+        "entity_recall": 0.855513,
+        "entity_recall_pct": "85.55%",
+        "entities": 263,
+        "true_links": 263,
+        "recovered_links": 225
+      },
+      "2": {
+        "link_recall": 0.884102,
+        "link_recall_pct": "88.41%",
+        "entity_recall": 0.81068,
+        "entity_recall_pct": "81.07%",
+        "entities": 824,
+        "true_links": 1648,
+        "recovered_links": 1457
+      },
+      "3": {
+        "link_recall": 0.904999,
+        "link_recall_pct": "90.50%",
+        "entity_recall": 0.802817,
+        "entity_recall_pct": "80.28%",
+        "entities": 1207,
+        "true_links": 3621,
+        "recovered_links": 3277
+      },
+      "4+": {
+        "link_recall": 0.903635,
+        "link_recall_pct": "90.36%",
+        "entity_recall": 0.746794,
+        "entity_recall_pct": "74.68%",
+        "entities": 2417,
+        "true_links": 11830,
+        "recovered_links": 10690
+      }
+    },
+    "80": {
+      "1": {
+        "link_recall": 0.859316,
+        "link_recall_pct": "85.93%",
+        "entity_recall": 0.859316,
+        "entity_recall_pct": "85.93%",
+        "entities": 263,
+        "true_links": 263,
+        "recovered_links": 226
+      },
+      "2": {
+        "link_recall": 0.885316,
+        "link_recall_pct": "88.53%",
+        "entity_recall": 0.813107,
+        "entity_recall_pct": "81.31%",
+        "entities": 824,
+        "true_links": 1648,
+        "recovered_links": 1459
+      },
+      "3": {
+        "link_recall": 0.906656,
+        "link_recall_pct": "90.67%",
+        "entity_recall": 0.806131,
+        "entity_recall_pct": "80.61%",
+        "entities": 1207,
+        "true_links": 3621,
+        "recovered_links": 3283
+      },
+      "4+": {
+        "link_recall": 0.906678,
+        "link_recall_pct": "90.67%",
+        "entity_recall": 0.752586,
+        "entity_recall_pct": "75.26%",
+        "entities": 2417,
+        "true_links": 11830,
+        "recovered_links": 10726
+      }
+    },
+    "100": {
+      "1": {
+        "link_recall": 0.859316,
+        "link_recall_pct": "85.93%",
+        "entity_recall": 0.859316,
+        "entity_recall_pct": "85.93%",
+        "entities": 263,
+        "true_links": 263,
+        "recovered_links": 226
+      },
+      "2": {
+        "link_recall": 0.887136,
+        "link_recall_pct": "88.71%",
+        "entity_recall": 0.815534,
+        "entity_recall_pct": "81.55%",
+        "entities": 824,
+        "true_links": 1648,
+        "recovered_links": 1462
+      },
+      "3": {
+        "link_recall": 0.908036,
+        "link_recall_pct": "90.80%",
+        "entity_recall": 0.808616,
+        "entity_recall_pct": "80.86%",
+        "entities": 1207,
+        "true_links": 3621,
+        "recovered_links": 3288
+      },
+      "4+": {
+        "link_recall": 0.908115,
+        "link_recall_pct": "90.81%",
+        "entity_recall": 0.755896,
+        "entity_recall_pct": "75.59%",
+        "entities": 2417,
+        "true_links": 11830,
+        "recovered_links": 10743
+      }
+    },
+    "150": {
+      "1": {
+        "link_recall": 0.863118,
+        "link_recall_pct": "86.31%",
+        "entity_recall": 0.863118,
+        "entity_recall_pct": "86.31%",
+        "entities": 263,
+        "true_links": 263,
+        "recovered_links": 227
+      },
+      "2": {
+        "link_recall": 0.894417,
+        "link_recall_pct": "89.44%",
+        "entity_recall": 0.824029,
+        "entity_recall_pct": "82.40%",
+        "entities": 824,
+        "true_links": 1648,
+        "recovered_links": 1474
+      },
+      "3": {
+        "link_recall": 0.911627,
+        "link_recall_pct": "91.16%",
+        "entity_recall": 0.816073,
+        "entity_recall_pct": "81.61%",
+        "entities": 1207,
+        "true_links": 3621,
+        "recovered_links": 3301
+      },
+      "4+": {
+        "link_recall": 0.911834,
+        "link_recall_pct": "91.18%",
+        "entity_recall": 0.762929,
+        "entity_recall_pct": "76.29%",
+        "entities": 2417,
+        "true_links": 11830,
+        "recovered_links": 10787
+      }
+    }
+  }
 }

@@ -242,11 +242,12 @@ class MultiIndexBlocker:
         if after_cap > self.retrieval_stats["max_candidates_after_cap"]:
             self.retrieval_stats["max_candidates_after_cap"] = after_cap
 
-    def retrieve_candidates(self, s1_rec: dict) -> List[str]:
+    def retrieve_candidates_with_uncapped(self, s1_rec: dict) -> Tuple[List[str], Set[str]]:
         """
-        Retrieve candidate IDs for a Source 1 record across all 6 channels.
-        If a primary block is oversized, retrieves from targeted sub-blocks.
-        Applies Priority Tier Retention during pre-ranking to safeguard true matches.
+        Retrieve candidate IDs for a Source 1 record across all 6 channels,
+        returning both:
+          1. Retained candidates after priority tier ranking and safety cap K.
+          2. Full set of raw candidates gathered across all 6 channels before capping.
         """
         country = s1_rec["country"].strip().upper()
         name_tokens, prefixes, postals, addr_anchors, two_words, street_anchors, geo_q, name_q = self.extract_keys(s1_rec)
@@ -280,15 +281,16 @@ class MultiIndexBlocker:
         # Channel 6: Street Name Anchor (name_q)
         query_channel("street", street_anchors, self.idx_street_anchor[country], name_q)
 
+        raw_candidates_uncapped = set(cand_set)
         candidates_before_cap = len(cand_set)
 
         if not cand_set:
             self._update_retrieval_stats(0, 0)
-            return []
+            return [], set()
 
         if len(cand_set) <= self.max_candidates:
             self._update_retrieval_stats(candidates_before_cap, len(cand_set))
-            return list(cand_set)
+            return list(cand_set), raw_candidates_uncapped
 
         # Multi-Signal Similarity Pre-Ranking with Priority Tier Retention:
         s1_name = s1_rec["root_name"]
@@ -327,7 +329,15 @@ class MultiIndexBlocker:
         candidates_after_cap = min(len(retained), self.max_candidates)
 
         self._update_retrieval_stats(candidates_before_cap, candidates_after_cap)
-        return retained[: self.max_candidates]
+        return retained[: self.max_candidates], raw_candidates_uncapped
+
+    def retrieve_candidates(self, s1_rec: dict) -> List[str]:
+        """
+        Retrieve candidate IDs for a Source 1 record across all 6 channels.
+        If a primary block is oversized, retrieves from targeted sub-blocks.
+        Applies Priority Tier Retention during pre-ranking to safeguard true matches.
+        """
+        return self.retrieve_candidates_with_uncapped(s1_rec)[0]
 
     def get_block_statistics(self) -> Dict[str, Any]:
         """Return audit statistics of indexed blocks and size distribution."""
