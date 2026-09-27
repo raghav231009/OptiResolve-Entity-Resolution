@@ -47,6 +47,7 @@ code/business_entity_resolution/
     ├── __init__.py
     ├── test_blocking.py            # Candidate blocking & safety cap tests
     ├── test_blocking_extended.py   # Extended blocking: country isolation, S2/S3, determinism
+    ├── test_blocking_production.py # 6-channel keys, non-destructive sub-blocking, statistics
     ├── test_config.py              # Path resolution & config defaults
     ├── test_dataset_coverage.py    # Training dataset coverage, CLI profiles & integrity
     ├── test_features.py            # 23-dim feature vector, missing value semantics

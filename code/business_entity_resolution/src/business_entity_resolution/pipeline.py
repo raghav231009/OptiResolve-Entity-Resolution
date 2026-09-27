@@ -539,6 +539,7 @@ class EntityResolutionPipeline:
             min_token_len=self.config.blocking.min_token_len,
             name_prefix_len=self.config.blocking.name_prefix_len,
             max_block_size=self.config.blocking.max_block_size,
+            sub_block_threshold=self.config.blocking.sub_block_threshold,
         )
         train_blocker.index_targets(train_targets)
         train_blocker.prune_large_blocks()
@@ -549,6 +550,7 @@ class EntityResolutionPipeline:
             min_token_len=self.config.blocking.min_token_len,
             name_prefix_len=self.config.blocking.name_prefix_len,
             max_block_size=self.config.blocking.max_block_size,
+            sub_block_threshold=self.config.blocking.sub_block_threshold,
         )
         val_blocker.index_targets(val_targets)
         val_blocker.prune_large_blocks()
@@ -559,11 +561,13 @@ class EntityResolutionPipeline:
         X_train, y_train, train_stats = self._generate_pair_matrix(
             fit_s1, fit_gt, train_blocker, train_target_map, desc="Building Train Pairs", return_stats=True
         )
+        train_blocker.log_retrieval_statistics(logger)
 
         logger.info("Generating validation pairs for model early stopping using val_blocker...")
         X_val, y_val, val_stats = self._generate_pair_matrix(
             val_s1, val_gt, val_blocker, val_target_map, desc="Building Val Pairs", return_stats=True
         )
+        val_blocker.log_retrieval_statistics(logger)
 
         train_pos = int(train_stats["total_positives"])
         train_neg = int(train_stats["total_negatives"])
@@ -765,6 +769,7 @@ class EntityResolutionPipeline:
                 min_token_len=self.config.blocking.min_token_len,
                 name_prefix_len=self.config.blocking.name_prefix_len,
                 max_block_size=self.config.blocking.max_block_size,
+                sub_block_threshold=self.config.blocking.sub_block_threshold,
             )
             blocker.index_targets(country_targets)
             blocker.prune_large_blocks()
@@ -826,6 +831,7 @@ class EntityResolutionPipeline:
                 total_s1_processed += len(s1_records)
                 logger.info(f"[{country}] Processed {country_s1_count:,} S1 entities...")
 
+            blocker.log_retrieval_statistics(logger)
             del country_targets, target_map, blocker
             gc.collect()
 
