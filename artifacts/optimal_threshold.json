@@ -1,4 +1,4 @@
 {
-  "optimal_threshold": 0.81,
-  "validation_macro_f05": 0.9204427220297806
+  "optimal_threshold": 0.73,
+  "validation_macro_f05": 0.9446880669341979
 }

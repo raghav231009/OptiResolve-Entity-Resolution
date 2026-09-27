@@ -86,9 +86,15 @@ pytest tests/ -v
 python evaluate_blocking.py
 ```
 
-### Run Full Pipeline (Train -> Tune -> Test Inference):
+### Run Pipeline:
 ```bash
-# Full dataset run:
+# Training and validation threshold tuning:
+python run_pipeline.py --train --eval
+
+# Streaming test inference using trained model:
+python run_pipeline.py --predict
+
+# Or run complete end-to-end pipeline:
 python run_pipeline.py --mode all
 
 # Rapid development run:

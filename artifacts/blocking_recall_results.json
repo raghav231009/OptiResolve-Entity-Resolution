@@ -1,0 +1,62 @@
+{
+  "evaluated_at": "2026-09-27T04:15:32.448510+00:00",
+  "sample_size": 5000,
+  "total_targets_loaded": 177362,
+  "production_config": {
+    "max_block_size": 350,
+    "min_token_len": 3,
+    "name_prefix_len": 4
+  },
+  "results": [
+    {
+      "K": 20,
+      "link_recall": 0.901048,
+      "link_recall_pct": "90.10%",
+      "entity_complete_recall": 0.779665,
+      "recovered_links": 15644,
+      "total_true_links": 17362,
+      "entities_with_complete_recall": 3673,
+      "entities_evaluated": 4711
+    },
+    {
+      "K": 40,
+      "link_recall": 0.90796,
+      "link_recall_pct": "90.80%",
+      "entity_complete_recall": 0.795373,
+      "recovered_links": 15764,
+      "total_true_links": 17362,
+      "entities_with_complete_recall": 3747,
+      "entities_evaluated": 4711
+    },
+    {
+      "K": 60,
+      "link_recall": 0.911358,
+      "link_recall_pct": "91.14%",
+      "entity_complete_recall": 0.803014,
+      "recovered_links": 15823,
+      "total_true_links": 17362,
+      "entities_with_complete_recall": 3783,
+      "entities_evaluated": 4711
+    },
+    {
+      "K": 80,
+      "link_recall": 0.914008,
+      "link_recall_pct": "91.40%",
+      "entity_complete_recall": 0.807472,
+      "recovered_links": 15869,
+      "total_true_links": 17362,
+      "entities_with_complete_recall": 3804,
+      "entities_evaluated": 4711
+    },
+    {
+      "K": 100,
+      "link_recall": 0.916081,
+      "link_recall_pct": "91.61%",
+      "entity_complete_recall": 0.810868,
+      "recovered_links": 15905,
+      "total_true_links": 17362,
+      "entities_with_complete_recall": 3820,
+      "entities_evaluated": 4711
+    }
+  ]
+}

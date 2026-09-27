@@ -1,0 +1,68 @@
+{
+  "validation_macro_f05": 0.9446880669341979,
+  "optimal_threshold": 0.73,
+  "threshold_search_history": {
+    "0.65": 0.9436337420826211,
+    "0.67": 0.9439586321920775,
+    "0.69": 0.9441803940791498,
+    "0.71": 0.9444388772852383,
+    "0.73": 0.9446880669341979,
+    "0.75": 0.9446877736461332,
+    "0.77": 0.9443702520184293,
+    "0.79": 0.9443430142378672,
+    "0.81": 0.9443026352451249,
+    "0.83": 0.9437599508154764,
+    "0.85": 0.9410673504696317,
+    "0.87": 0.9386395702191752,
+    "0.89": 0.9381278357187394,
+    "0.91": 0.9375325800199902,
+    "0.93": 0.9359192822397389,
+    "0.95": 0.9332791213900454
+  },
+  "train_matrix_shape": [
+    858111,
+    23
+  ],
+  "train_positives": 166029,
+  "train_negatives": 692082,
+  "val_matrix_shape": [
+    157637,
+    23
+  ],
+  "val_positives": 41608,
+  "val_negatives": 116029,
+  "train_s1_count": 48000,
+  "val_s1_count": 12000,
+  "feature_importances": {
+    "name_len_diff_ratio": 2587.0,
+    "name_partial_ratio": 2237.0,
+    "name_jaro_winkler": 2062.0,
+    "addr_ratio": 1980.0,
+    "name_token_sort_ratio": 1949.0,
+    "addr_jaccard": 1900.0,
+    "name_ratio": 1833.0,
+    "addr_token_set_ratio": 1815.0,
+    "name_char3_jaccard": 1802.0,
+    "name_token_set_ratio": 1647.0,
+    "combined_weighted_sim": 1645.0,
+    "addr_token_sort_ratio": 1596.0,
+    "name_char4_jaccard": 1527.0,
+    "numeric_token_overlap": 1193.0,
+    "house_number_match": 631.0,
+    "target_source_is_s3": 459.0,
+    "postal_exact_match": 330.0,
+    "name_token_containment": 255.0,
+    "root_name_exact_match": 245.0,
+    "postal_prefix_match": 205.0,
+    "addr_present_both": 2.0,
+    "name_exact_match": 0.0,
+    "country_match": 0.0
+  },
+  "early_stopping_best_iteration": 450,
+  "blocking_config": {
+    "max_candidates_per_entity": 80,
+    "max_block_size": 350,
+    "min_token_len": 3,
+    "name_prefix_len": 4
+  }
+}

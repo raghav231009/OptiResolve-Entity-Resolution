@@ -1,8 +1,6 @@
 # Output TSVs and large artifacts (>100MB exceeds GitHub limits)
 output/
 artifacts/*.joblib
-artifacts/*.json
-artifacts/blocking_recall_results.json
 *.zip
 *.tsv
 

@@ -13,16 +13,16 @@
 
 > **Note:** Performance numbers reflect the last full-dataset run. The stored artifact (`artifacts/optimal_threshold.json`) is the authoritative source after each run.
 
-- **Holdout Validation Macro $F_{0.5}$:** `0.9204` (as measured from `artifacts/optimal_threshold.json`).
-- **Optimal Threshold $\tau^*$:** `0.81` (precision-heavy calibration; re-tuned per run).
-- **Blocking Link Recall:** `97.6%` link recall at production safety cap $K=80$ (reproducible via `evaluate_blocking.py`).
+- **Holdout Validation Macro $F_{0.5}$:** `0.9447` (measured from `artifacts/optimal_threshold.json` and `artifacts/training_results.json`).
+- **Optimal Threshold $\tau^*$:** `0.730` (precision-heavy calibration; re-tuned per run).
+- **Blocking Link Recall:** `91.40%` link recall (`80.75%` entity complete recall) at production safety cap $K=80$ (reproducible via `evaluate_blocking.py`).
 - **Production Candidate Cap:** $K = 80$ with Priority Tier Retention to safeguard true matches.
 - **Validation Isolation:** Independent target extraction and blocker indexing for train vs. holdout validation sets (zero leakage).
-- **Model Early Stopping:** LightGBM with early stopping (30 rounds) on isolated holdout validation set.
-- **Test Set Coverage:** 1,732,544 Source 1 entities processed across **US**, **France**, and **India**.
+- **Model Early Stopping:** LightGBM with early stopping (30 rounds) on isolated holdout validation set across 23 pairwise features.
+- **Test Set Coverage:** 1,732,544 Source 1 entities processed across **US**, **France**, and **India** (5,733,062 total predicted links: 2,788,951 S2, 2,944,111 S3).
 - **Open-Set Countries:** Countries discovered dynamically from data — no hardcoded country list.
-- **Candidate Subset Invariant:** 100% compliant with competition requirements ($\text{matches} \subseteq \text{candidates}$).
-- **Submission Validator:** Confirmed via `utils/validate_submission.py` (Exit code 0).
+- **Candidate Subset Invariant:** 100% compliant with competition requirements ($\text{matches} \subseteq \text{candidates}$ with 0 violations).
+- **Submission Validator:** Confirmed via `utils/validate_submission.py` (Exit code 0, PASS).
 
 ---
 
@@ -127,17 +127,17 @@ python evaluate_blocking.py
 ### 4. Run Full Pipeline (requires dataset)
 
 ```bash
-# Full dataset training and test inference:
+# Training and validation threshold tuning:
+python run_pipeline.py --train --eval
+
+# Streaming test inference using trained model:
+python run_pipeline.py --predict
+
+# Or run complete end-to-end pipeline:
 python run_pipeline.py --mode all
 
 # Rapid development run (subsampled for quick iteration):
 python run_pipeline.py --mode all --dev
-
-# Training only:
-python run_pipeline.py --mode train
-
-# Inference only using a previously trained model:
-python run_pipeline.py --mode predict
 ```
 
 ### 5. Validate Submission Files
