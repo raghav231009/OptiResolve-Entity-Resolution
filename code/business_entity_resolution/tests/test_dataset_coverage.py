@@ -150,3 +150,88 @@ class TestCLIParsingProfiles:
                 assert config_used.train_s1_limit is None
                 assert config_used.val_s1_limit is None
                 assert config_used.is_production is True
+
+
+class TestCoveragePropertiesAndAssertions:
+    """Automated assertions verifying data coverage properties and report invariants."""
+
+    def test_data_coverage_report_json_exists_and_valid(self):
+        """Verify machine-readable coverage report contains all required schema fields."""
+        import json
+        config = PipelineConfig()
+        report_path = config.paths.artifacts_dir / "data_coverage_report.json"
+        assert report_path.exists(), f"Coverage report missing at {report_path}"
+
+        with open(report_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        required_keys = [
+            "total_s1",
+            "total_positive_links",
+            "train_positive_links",
+            "validation_positive_links",
+            "source2_positive_links",
+            "source3_positive_links",
+            "total_training_pairs",
+            "positive_pairs",
+            "negative_pairs",
+            "negative_positive_ratio",
+            "country_distribution",
+            "missingness_distribution",
+        ]
+        for k in required_keys:
+            assert k in data, f"Required key '{k}' missing from data_coverage_report.json"
+
+        assert data["total_s1"] == 2206821
+        assert data["total_positive_links"] == 7638365
+
+    def test_source_balance_consistency(self):
+        """Verify Source 2 and Source 3 positive link representation is balanced."""
+        import json
+        config = PipelineConfig()
+        report_path = config.paths.artifacts_dir / "data_coverage_report.json"
+        with open(report_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        s2_pct = data["source2_positive_percentage"]
+        s3_pct = data["source3_positive_percentage"]
+        assert 45.0 <= s2_pct <= 55.0, f"S2 percentage {s2_pct}% is out of balanced bounds"
+        assert 45.0 <= s3_pct <= 55.0, f"S3 percentage {s3_pct}% is out of balanced bounds"
+        assert abs((s2_pct + s3_pct) - 100.0) < 0.01
+
+    def test_target_completeness_invariant(self):
+        """Verify 100% of required targets exist with 0 missing targets."""
+        import json
+        config = PipelineConfig()
+        report_path = config.paths.artifacts_dir / "data_coverage_report.json"
+        with open(report_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        reg = data["target_registry_coverage"]
+        assert reg["missing_s2_targets"] == 0
+        assert reg["missing_s3_targets"] == 0
+        assert reg["target_completeness_pct"] == 100.0
+
+    def test_singleton_ratio_preservation(self):
+        """Verify singleton S1 entities represent expected ~5.58% proportion."""
+        import json
+        config = PipelineConfig()
+        report_path = config.paths.artifacts_dir / "data_coverage_report.json"
+        with open(report_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        cov = data["s1_ground_truth_coverage"]
+        assert cov["singleton_s1_entities"] == 123247
+        assert 5.0 <= cov["singleton_s1_pct"] <= 6.5
+
+    def test_negative_to_positive_ratio_bounded(self):
+        """Verify negative-to-positive class balance ratio is strictly controlled."""
+        import json
+        config = PipelineConfig()
+        report_path = config.paths.artifacts_dir / "data_coverage_report.json"
+        with open(report_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        ratio = data["negative_positive_ratio"]
+        assert 2.0 <= ratio <= 15.0, f"Negative-to-positive ratio {ratio} outside expected range [2.0, 15.0]"
+

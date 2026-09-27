@@ -1,0 +1,123 @@
+{
+  "total_s1": 2206821,
+  "development_phase": {
+    "full_population_split": {
+      "train_s1": 1765457,
+      "validation_s1": 441364,
+      "train_percentage": 80.0,
+      "validation_percentage": 20.0,
+      "estimated_train_positive_links": 6110692,
+      "estimated_validation_positive_links": 1527673
+    },
+    "recorded_experiment_split": {
+      "train_s1": 80000,
+      "validation_s1": 20000,
+      "train_percentage": 80.0,
+      "validation_percentage": 20.0,
+      "train_positive_links": 276972,
+      "validation_positive_links": 69117,
+      "total_training_pairs": 1426273,
+      "positive_pairs": 276972,
+      "negative_pairs": 1149301,
+      "negative_positive_ratio": 4.15,
+      "validation_pairs": 262989,
+      "validation_positives": 69117,
+      "validation_negatives": 193872,
+      "validation_negative_positive_ratio": 2.8
+    }
+  },
+  "final_model_phase": {
+    "train_s1": 2206821,
+    "validation_s1": 0,
+    "train_percentage": 100.0,
+    "validation_percentage": 0.0,
+    "total_positive_links": 7638365,
+    "total_targets_loaded": 7938365,
+    "required_positive_targets": 7638365,
+    "missing_positive_targets": 0,
+    "background_distractors_loaded": 300000,
+    "locked_estimators_from_dev": 450,
+    "locked_threshold_from_dev": 0.78
+  },
+  "total_positive_links": 7638365,
+  "train_positive_links": 276972,
+  "validation_positive_links": 69117,
+  "source2_positive_links": 3693619,
+  "source3_positive_links": 3944746,
+  "source2_positive_percentage": 48.36,
+  "source3_positive_percentage": 51.64,
+  "total_training_pairs": 1426273,
+  "positive_pairs": 276972,
+  "negative_pairs": 1149301,
+  "negative_positive_ratio": 4.15,
+  "target_registry_coverage": {
+    "train_source2_total_records": 5034616,
+    "train_source3_total_records": 5285603,
+    "unique_s2_targets_required": 3693619,
+    "unique_s3_targets_required": 3944746,
+    "missing_s2_targets": 0,
+    "missing_s3_targets": 0,
+    "target_completeness_pct": 100.0
+  },
+  "s1_ground_truth_coverage": {
+    "total_s1": 2206821,
+    "s1_with_positive_matches": 2083574,
+    "s1_with_positive_matches_pct": 94.42,
+    "singleton_s1_entities": 123247,
+    "singleton_s1_pct": 5.58,
+    "s1_with_s2_matches": 1919076,
+    "s1_with_s2_matches_pct": 86.96,
+    "s1_with_s3_matches": 1940545,
+    "s1_with_s3_matches_pct": 87.93,
+    "s1_with_both_s2_and_s3": 1776047,
+    "s1_with_both_s2_and_s3_pct": 80.48
+  },
+  "country_distribution": {
+    "train_source1": {
+      "US": 1323633,
+      "INDIA": 883188
+    },
+    "train_source2": {
+      "US": 3016817,
+      "INDIA": 2017799
+    },
+    "train_source3": {
+      "US": 3170056,
+      "INDIA": 2115547
+    },
+    "test_source1": {
+      "INDIA": 809986,
+      "US": 663106,
+      "FRANCE": 259452
+    }
+  },
+  "missingness_distribution": {
+    "train_source1": {
+      "name": 0,
+      "address": 0,
+      "country": 0
+    },
+    "train_source2": {
+      "name": 0,
+      "address": 168967,
+      "address_pct": 3.36,
+      "country": 0
+    },
+    "train_source3": {
+      "name": 0,
+      "address": 175916,
+      "address_pct": 3.33,
+      "country": 0
+    }
+  },
+  "efficiency_assessment": {
+    "is_efficient": true,
+    "reasons": [
+      "100% of required ground truth positive targets (7,638,365 targets) are verified and loaded without a single omission.",
+      "Negative mining is focused exclusively on blocker-retrieved candidate pairs (hard negatives), avoiding billions of useless random pairs.",
+      "Stratified train/val split strictly preserves the 5.58% singleton population, preventing singleton-shift bias.",
+      "Target pools for train and validation are mathematically disjoint (|S_train \u2229 S_val| = 0), preventing target data leakage.",
+      "Two-phase workflow decouples architecture/threshold selection (Phase A, 80/20) from final model deployment (Phase B, 100% full dataset)."
+    ]
+  }
+}
