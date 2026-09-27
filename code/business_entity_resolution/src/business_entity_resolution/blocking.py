@@ -84,6 +84,7 @@ class MultiIndexBlocker:
             "tier2_retained": 0,
             "tier1_overflow_events": 0,
         }
+        self.last_candidate_channels: Dict[str, List[str]] = {}
 
     def extract_keys(
         self, record: dict
@@ -303,6 +304,7 @@ class MultiIndexBlocker:
         name_tokens, prefixes, postals, addr_anchors, two_words, street_anchors, geo_q, name_q = self.extract_keys(s1_rec)
 
         cand_set: Set[str] = set()
+        cand_channels: Dict[str, List[str]] = {}
 
         def query_channel(channel_prefix: str, keys: List[str], primary_idx: Dict[str, List[str]], sub_qualifier: str):
             for k in keys:
@@ -311,12 +313,18 @@ class MultiIndexBlocker:
                     sub_key = f"{channel_prefix}_{k}_{sub_qualifier}"
                     sub_cands = self.idx_sub_blocks[country].get(sub_key, [])
                     if sub_cands:
-                        cand_set.update(sub_cands)
+                        for cid in sub_cands:
+                            cand_set.add(cid)
+                            cand_channels.setdefault(cid, []).append(channel_prefix)
                     else:
                         # Fallback to bounded sample of primary block to guarantee recall
-                        cand_set.update(primary_idx.get(k, [])[: self.max_candidates])
+                        for cid in primary_idx.get(k, [])[: self.max_candidates]:
+                            cand_set.add(cid)
+                            cand_channels.setdefault(cid, []).append(channel_prefix)
                 else:
-                    cand_set.update(primary_idx.get(k, []))
+                    for cid in primary_idx.get(k, []):
+                        cand_set.add(cid)
+                        cand_channels.setdefault(cid, []).append(channel_prefix)
 
         # Channel 1: Name Tokens (geo_q)
         query_channel("tok", name_tokens, self.idx_name_token[country], geo_q)
@@ -331,6 +339,7 @@ class MultiIndexBlocker:
         # Channel 6: Street Name Anchor (name_q)
         query_channel("street", street_anchors, self.idx_street_anchor[country], name_q)
 
+        self.last_candidate_channels = cand_channels
         raw_candidates_uncapped = set(cand_set)
         candidates_before_cap = len(cand_set)
 
@@ -498,6 +507,16 @@ class MultiIndexBlocker:
         Applies Priority Tier Retention during pre-ranking to safeguard true matches.
         """
         return self.retrieve_candidates_with_uncapped(s1_rec)[0]
+
+    def retrieve_candidates_with_channel_attribution(
+        self, s1_rec: dict
+    ) -> Tuple[List[str], Set[str], Dict[str, List[str]]]:
+        """
+        Retrieve candidate IDs across all 6 channels with channel attribution.
+        Returns: (retained_candidates, raw_uncapped_candidates, candidate_to_channels_map)
+        """
+        retained, uncapped = self.retrieve_candidates_with_uncapped(s1_rec)
+        return retained, uncapped, dict(self.last_candidate_channels)
 
     def get_block_statistics(self) -> Dict[str, Any]:
         """Return audit statistics of indexed blocks and size distribution."""

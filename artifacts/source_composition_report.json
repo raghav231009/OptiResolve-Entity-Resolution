@@ -1,0 +1,133 @@
+{
+  "timestamp": "2026-09-27T07:15:31.832312+00:00",
+  "s1_sample_size": 2500,
+  "locked_threshold": 0.78,
+  "global_ground_truth": {
+    "total_s1": 2206821,
+    "s2_positive_links": 3693619,
+    "s3_positive_links": 3944746,
+    "s2_share_pct": 48.36,
+    "s3_share_pct": 51.64,
+    "s1_with_s2_match": 1919076,
+    "s1_with_s3_match": 1940545,
+    "s1_with_both_s2_s3": 1776047,
+    "both_sources_coverage_pct": 80.48
+  },
+  "mined_training_pairs": {
+    "s2": {
+      "positive_pairs": 4200,
+      "negative_pairs": 71992,
+      "total_pairs": 76192,
+      "neg_to_pos_ratio": 17.14
+    },
+    "s3": {
+      "positive_pairs": 4474,
+      "negative_pairs": 69907,
+      "total_pairs": 74381,
+      "neg_to_pos_ratio": 15.63
+    }
+  },
+  "balance_check": {
+    "is_disproportionately_trained": false,
+    "s2_pair_share_pct": 50.6,
+    "s3_pair_share_pct": 49.4,
+    "sufficient_negatives_both_sources": true,
+    "sampling_recommendation": "Both Source 2 (48.4% GT) and Source 3 (51.6% GT) are naturally balanced in the dataset. Negative mining contributes balanced hard negatives across both sources. Artificial oversampling is NOT recommended as it would skew the empirical prior distribution."
+  },
+  "source_specific_validation_metrics": {
+    "s2": {
+      "threshold": 0.78,
+      "macro_f05": 0.9400389354109943,
+      "precision": 0.9937872120113901,
+      "recall": 0.914047619047619,
+      "predicted_links": 3863,
+      "empty_predictions": 434,
+      "total_true_positives": 3839,
+      "total_false_positives": 24,
+      "total_false_negatives": 361
+    },
+    "s3": {
+      "threshold": 0.78,
+      "macro_f05": 0.9552191031133757,
+      "precision": 0.9937424789410348,
+      "recall": 0.9228877961555655,
+      "predicted_links": 4155,
+      "empty_predictions": 383,
+      "total_true_positives": 4129,
+      "total_false_positives": 26,
+      "total_false_negatives": 345
+    }
+  },
+  "noise_distribution_cases": {
+    "name_corruption_cases": {
+      "description": "Cases where name similarity < 0.60 but address similarity >= 0.70",
+      "s2_count": 29,
+      "s3_count": 106,
+      "dominant_source": "S3"
+    },
+    "address_corruption_cases": {
+      "description": "Cases where name similarity >= 0.80 but address similarity < 0.45",
+      "s2_count": 606,
+      "s3_count": 630,
+      "dominant_source": "S3"
+    },
+    "missing_address_cases": {
+      "description": "Cases where target address is empty or whitespace",
+      "s2_count": 187,
+      "s3_count": 186,
+      "dominant_source": "S2"
+    }
+  },
+  "feature_distribution_comparison": {
+    "s2_positive_means": {
+      "name_ratio": 0.7924268841743469,
+      "name_partial_ratio": 0.8591886162757874,
+      "name_token_sort_ratio": 0.8026490211486816,
+      "name_token_set_ratio": 0.8559284210205078,
+      "name_jaro_winkler": 0.8800000548362732,
+      "name_char3_jaccard": 0.6634106636047363,
+      "name_char4_jaccard": 0.6285415887832642,
+      "name_token_containment": 0.6483333110809326,
+      "name_len_diff_ratio": 0.12126424908638,
+      "name_exact_match": 0.24809524416923523,
+      "root_name_exact_match": 0.41357141733169556,
+      "addr_ratio": 0.799821138381958,
+      "addr_token_sort_ratio": 0.8589228987693787,
+      "addr_token_set_ratio": 0.9186713099479675,
+      "addr_jaccard": 0.7496059536933899,
+      "addr_present_both": 0.9554761648178101,
+      "house_number_match": 0.2723809480667114,
+      "postal_exact_match": -0.8440476059913635,
+      "postal_prefix_match": -0.8373809456825256,
+      "numeric_token_overlap": 0.6647857427597046,
+      "target_source_is_s3": 0.0,
+      "country_match": 1.0,
+      "combined_weighted_sim": 0.8928740620613098
+    },
+    "s3_positive_means": {
+      "name_ratio": 0.806846022605896,
+      "name_partial_ratio": 0.889735758304596,
+      "name_token_sort_ratio": 0.8169174790382385,
+      "name_token_set_ratio": 0.8852600455284119,
+      "name_jaro_winkler": 0.8836003541946411,
+      "name_char3_jaccard": 0.6744177341461182,
+      "name_char4_jaccard": 0.6397210955619812,
+      "name_token_containment": 0.6756817102432251,
+      "name_len_diff_ratio": 0.14023587107658386,
+      "name_exact_match": 0.2657577097415924,
+      "root_name_exact_match": 0.404336154460907,
+      "addr_ratio": 0.7373337745666504,
+      "addr_token_sort_ratio": 0.7919009327888489,
+      "addr_token_set_ratio": 0.8681336641311646,
+      "addr_jaccard": 0.5786135196685791,
+      "addr_present_both": 0.9584264755249023,
+      "house_number_match": 0.2863209545612335,
+      "postal_exact_match": -0.8305766582489014,
+      "postal_prefix_match": -0.8243182897567749,
+      "numeric_token_overlap": 0.6853971481323242,
+      "target_source_is_s3": 1.0,
+      "country_match": 1.0,
+      "combined_weighted_sim": 0.8931446671485901
+    }
+  }
+}
