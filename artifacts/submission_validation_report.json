@@ -1,0 +1,20 @@
+{
+  "status": "PASSED",
+  "timestamp": "2026-09-27T09:40:20.384067+00:00",
+  "total_test_s1_entities": 1732544,
+  "total_lines_validated": 1732544,
+  "unique_matching_s1_count": 1732544,
+  "unique_candidate_s1_count": 1732544,
+  "exact_id_set_match": true,
+  "candidate_subset_violations": 0,
+  "total_predicted_links": 5733062,
+  "empty_match_entities": 343572,
+  "s2_links": 2788951,
+  "s3_links": 2944111,
+  "s2_link_pct": 48.65,
+  "s3_link_pct": 51.35,
+  "avg_links_per_s1": 3.309,
+  "matching_tsv_path": "D:\\New folder (2)\\output\\matching_results.tsv",
+  "candidate_tsv_path": "D:\\New folder (2)\\output\\candidate_pairs.tsv",
+  "test_s1_tsv_path": "D:\\dataset amazon\\student_resource\\dataset\\test\\test_source1.tsv"
+}

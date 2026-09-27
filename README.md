@@ -5,7 +5,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Validation Status](https://img.shields.io/badge/Validator-PASS-brightgreen.svg)]()
-[![Tests](https://img.shields.io/badge/Tests-262%2F262%20Passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-337%2F337%20Passed-brightgreen.svg)]()
 
 ---
 
@@ -48,15 +48,20 @@
 │       │       ├── source_audit.py     # Source 2 vs Source 3 data composition & noise audit
 │       │       ├── error_analysis.py   # Automated error taxonomy classification (FP & FN)
 │       │       └── pipeline.py         # Streaming train, tune, and test inference engine
-│       ├── tests/                      # Automated test suite (262/262 passing)
+│       ├── tests/                      # Automated test suite (337/337 passing)
+│       │   ├── test_adversarial_leakage.py
 │       │   ├── test_blocking.py
 │       │   ├── test_blocking_extended.py
 │       │   ├── test_blocking_production.py
+│       │   ├── test_calibration.py
 │       │   ├── test_candidate_capping.py
+│       │   ├── test_competition_lifecycle.py
 │       │   ├── test_config.py
 │       │   ├── test_dataset_coverage.py
 │       │   ├── test_features.py
 │       │   ├── test_final_training_workflow.py
+│       │   ├── test_independent_validator.py
+│       │   ├── test_inference_checkpoint.py
 │       │   ├── test_integration.py
 │       │   ├── test_metrics.py
 │       │   ├── test_metrics_extended.py
@@ -64,6 +69,8 @@
 │       │   ├── test_negative_sampling.py
 │       │   ├── test_normalization.py
 │       │   ├── test_normalization_extended.py
+│       │   ├── test_open_set_country.py
+│       │   ├── test_reproducibility.py
 │       │   ├── test_smoke_e2e.py       # End-to-end smoke test with synthetic dataset
 │       │   ├── test_source_and_error_audit.py
 │       │   ├── test_target_hardening.py

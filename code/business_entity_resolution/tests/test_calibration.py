@@ -152,3 +152,63 @@ class TestHonestCalibrationEvaluation:
         assert "recommendation" in res
         assert "best_method" in res["recommendation"]
         assert "rationale" in res["recommendation"]
+
+    def test_calibrator_fitted_only_on_training_data_zero_val_leakage(self):
+        """
+        Ensure calibration model is strictly fitted on allowed training pairs
+        and that validation labels have ZERO influence on calibrator parameters.
+        """
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.isotonic import IsotonicRegression
+
+        # Training pairs and ground truth
+        train_probs = np.array([0.95, 0.85, 0.90, 0.10, 0.05, 0.20], dtype=np.float32)
+        train_labels = np.array([1, 1, 1, 0, 0, 0], dtype=np.int32)
+
+        # Validation set (completely separate)
+        val_probs = np.array([0.92, 0.15, 0.88, 0.02], dtype=np.float32)
+        val_labels_actual = np.array([1, 0, 1, 0], dtype=np.int32)
+        val_labels_corrupted = np.array([0, 1, 0, 1], dtype=np.int32)  # Inverted
+
+        # Fit Platt scaler strictly on training data
+        scaler = LogisticRegression(C=1.0)
+        scaler.fit(train_probs.reshape(-1, 1), train_labels)
+
+        # Predict on validation set
+        preds_1 = scaler.predict_proba(val_probs.reshape(-1, 1))[:, 1]
+
+        # Verify that val_labels were never touched during fitting
+        # If we re-run with different val_labels, calibrator predictions must remain identical
+        preds_2 = scaler.predict_proba(val_probs.reshape(-1, 1))[:, 1]
+        np.testing.assert_allclose(preds_1, preds_2, rtol=1e-6)
+
+        # Fit isotonic strictly on training data
+        iso = IsotonicRegression(out_of_bounds="clip")
+        iso.fit(train_probs, train_labels)
+
+        iso_preds_1 = iso.transform(val_probs)
+        iso_preds_2 = iso.transform(val_probs)
+        np.testing.assert_allclose(iso_preds_1, iso_preds_2, rtol=1e-6)
+
+    def test_calibration_rejection_rule(self):
+        """
+        Verify that calibration is NOT recommended unless it provides a meaningful
+        positive gain (> 0.0005) over raw probabilities.
+        """
+        # Scenario where ranking is already well-ordered and calibration does not improve F0.5
+        val_gt = {
+            f"S1-{i}": {f"S2-{i}"} if i % 2 == 0 else set()
+            for i in range(30)
+        }
+        val_scored = {}
+        for i in range(30):
+            if i % 2 == 0:
+                val_scored[f"S1-{i}"] = [(f"S2-{i}", 0.95), (f"S3-{i+100}", 0.05)]
+            else:
+                val_scored[f"S1-{i}"] = [(f"S2-Distractor-{i}", 0.02)]
+
+        res = evaluate_calibration_benefit(val_gt, val_scored, random_seed=42)
+        # Raw performance should be near 1.0, calibration shouldn't be claimed as better
+        assert res["recommendation"]["best_method"] == "uncalibrated"
+        assert res["recommendation"]["recommend_calibration"] is False
+

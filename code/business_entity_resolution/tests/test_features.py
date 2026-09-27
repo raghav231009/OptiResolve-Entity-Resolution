@@ -277,3 +277,129 @@ class TestLightGBMFeatureContract:
         X_test_bad = np.random.rand(5, 24).astype(np.float32)
         with pytest.raises(AssertionError, match="Feature dimension mismatch"):
             model.predict_proba(X_test_bad)
+
+
+class TestFeatureAuditAndRegression:
+    """Regression tests verifying zero label leakage, missingness behavior, and cross-country robustness."""
+
+    def test_feature_zero_label_leakage(self):
+        """Proves features are strictly computed from (s1, cand) attributes without external labels or target IDs."""
+        s1 = make_record(entity_id="S1_LEAK_CHECK", clean_name="acme inc")
+        cand1 = make_record(entity_id="S2_001", clean_name="acme inc")
+        cand2 = make_record(entity_id="S2_999", clean_name="acme inc")
+
+        feats1 = compute_pair_features(s1, cand1)
+        feats2 = compute_pair_features(s1, cand2)
+
+        # Identical attributes with different target entity IDs must yield identical feature vectors
+        assert feats1 == feats2
+
+    def test_feature_missingness_behavior_all_features(self):
+        """Proves every feature has deterministic, valid default behavior under completely blank records."""
+        blank_s1 = {"entity_id": "S1_BLANK"}
+        blank_cand = {"entity_id": "S2_BLANK"}
+
+        feats = compute_pair_features(blank_s1, blank_cand)
+        assert len(feats) == 23
+        for val in feats:
+            assert not math.isnan(val)
+            assert not math.isinf(val)
+
+        fd = dict(zip(FEATURE_NAMES, feats))
+        # Sentinels
+        assert fd["house_number_match"] == -1.0
+        assert fd["postal_exact_match"] == -1.0
+        assert fd["postal_prefix_match"] == -1.0
+        assert fd["addr_present_both"] == 0.0
+
+    def test_french_unicode_and_legal_form_robustness(self):
+        """Proves robustness on French test entities (accents, French legal forms, French address format)."""
+        s1 = make_record(
+            entity_id="S1_FR_01",
+            country="FRANCE",
+            clean_name="societe generale de banque",
+            root_name="societe generale",
+            clean_address="29 boulevard haussmann paris",
+            postal_code="75009",
+            building_number="29",
+        )
+        cand = make_record(
+            entity_id="S2_FR_01",
+            country="FRANCE",
+            clean_name="societe generale sa",
+            root_name="societe generale",
+            clean_address="29 bd haussmann paris",
+            postal_code="75009",
+            building_number="29",
+        )
+
+        feats = compute_pair_features(s1, cand)
+        fd = dict(zip(FEATURE_NAMES, feats))
+
+        assert fd["root_name_exact_match"] == 1.0
+        assert fd["house_number_match"] == 1.0
+        assert fd["postal_exact_match"] == 1.0
+        assert fd["country_match"] == 1.0
+        assert fd["addr_token_set_ratio"] > 0.80
+
+    def test_indian_transliteration_and_honorific_robustness(self):
+        """Proves robustness on Indian entities with vowel/consonant variations and honorifics."""
+        s1 = make_record(
+            entity_id="S1_IN_01",
+            country="INDIA",
+            clean_name="shree ram traders",
+            root_name="shree ram",
+            clean_address="plot 42 mg road bangalore",
+            postal_code="560001",
+            building_number="42",
+        )
+        cand = make_record(
+            entity_id="S3-IN-01",
+            country="INDIA",
+            clean_name="sri ram traders",
+            root_name="sri ram",
+            clean_address="42 mahatma gandhi road bengaluru",
+            postal_code="560001",
+            building_number="42",
+        )
+
+        feats = compute_pair_features(s1, cand)
+        fd = dict(zip(FEATURE_NAMES, feats))
+
+        assert fd["name_jaro_winkler"] > 0.85
+        assert fd["name_char3_jaccard"] > 0.35
+        assert fd["house_number_match"] == 1.0
+        assert fd["postal_exact_match"] == 1.0
+        assert fd["target_source_is_s3"] == 1.0
+
+    def test_us_abbreviated_address_and_suite_robustness(self):
+        """Proves robustness on US multi-tenant and abbreviated address variations."""
+        s1 = make_record(
+            entity_id="S1_US_01",
+            country="US",
+            clean_name="paramount logistics llc",
+            root_name="paramount logistics",
+            clean_address="100 north broadway suite 400 new york ny",
+            postal_code="10001",
+            building_number="100",
+            numeric_tokens={"100", "400"},
+        )
+        cand = make_record(
+            entity_id="S2_US_01",
+            country="US",
+            clean_name="paramount logistics incorporated",
+            root_name="paramount logistics",
+            clean_address="100 n broadway new york",
+            postal_code="10001",
+            building_number="100",
+            numeric_tokens={"100"},
+        )
+
+        feats = compute_pair_features(s1, cand)
+        fd = dict(zip(FEATURE_NAMES, feats))
+
+        assert fd["root_name_exact_match"] == 1.0
+        assert fd["house_number_match"] == 1.0
+        assert fd["addr_token_set_ratio"] > 0.80
+        assert fd["numeric_token_overlap"] > 0.0
+

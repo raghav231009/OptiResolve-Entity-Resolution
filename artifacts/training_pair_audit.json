@@ -1,0 +1,78 @@
+{
+  "train_audit": {
+    "dataset": "Train (80%)",
+    "num_pos": 13866,
+    "num_neg": 157014,
+    "neg_to_pos_ratio": 11.323669407183038,
+    "duplicate_pairs": 0,
+    "source_counts": {
+      "pos": {
+        "S2": 6758,
+        "S3": 7108
+      },
+      "neg": {
+        "S2": 86045,
+        "S3": 70969
+      }
+    },
+    "country_counts": {
+      "pos": {
+        "INDIA": 5377,
+        "US": 8489
+      },
+      "neg": {
+        "INDIA": 63106,
+        "US": 93908
+      }
+    },
+    "neg_hardness": {
+      "Hard Location (Addr >= 70)": 4155,
+      "Hard (50 <= Name < 80)": 91358,
+      "Medium / Distractor": 25234,
+      "Ultra-Hard (Name >= 80)": 36267
+    },
+    "same_addr_diff_name": 2011,
+    "same_name_diff_addr": 20795,
+    "same_bldg_diff_name": 3479,
+    "same_postal_diff_name": 841,
+    "brand_collisions": 213
+  },
+  "val_audit": {
+    "dataset": "Validation (20%)",
+    "num_pos": 3496,
+    "num_neg": 39414,
+    "neg_to_pos_ratio": 11.274027459954233,
+    "duplicate_pairs": 0,
+    "source_counts": {
+      "pos": {
+        "S2": 1657,
+        "S3": 1839
+      },
+      "neg": {
+        "S2": 21694,
+        "S3": 17720
+      }
+    },
+    "country_counts": {
+      "pos": {
+        "US": 1998,
+        "INDIA": 1498
+      },
+      "neg": {
+        "US": 21766,
+        "INDIA": 17648
+      }
+    },
+    "neg_hardness": {
+      "Ultra-Hard (Name >= 80)": 8579,
+      "Hard (50 <= Name < 80)": 23290,
+      "Medium / Distractor": 6446,
+      "Hard Location (Addr >= 70)": 1099
+    },
+    "same_addr_diff_name": 562,
+    "same_name_diff_addr": 5078,
+    "same_bldg_diff_name": 956,
+    "same_postal_diff_name": 261,
+    "brand_collisions": 54
+  }
+}

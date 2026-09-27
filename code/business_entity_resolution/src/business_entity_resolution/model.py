@@ -79,6 +79,7 @@ class EntityResolutionModel:
             reg_alpha=self.config.reg_alpha,
             reg_lambda=self.config.reg_lambda,
             random_state=self.config.random_state,
+            deterministic=getattr(self.config, "deterministic", True),
             n_jobs=self.config.n_jobs,
             verbose=-1,
         )
@@ -163,7 +164,7 @@ class EntityResolutionModel:
         importances = self.clf.feature_importances_
         return dict(sorted(zip(FEATURE_NAMES, importances), key=lambda x: x[1], reverse=True))
 
-    def save(self, filepath: Path):
+    def save(self, filepath: Path, extra_metadata: Optional[Dict[str, Any]] = None):
         """Persist model artifact and companion metadata JSON."""
         filepath = Path(filepath)
         filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -193,10 +194,17 @@ class EntityResolutionModel:
                 "reg_alpha": self.config.reg_alpha,
                 "reg_lambda": self.config.reg_lambda,
                 "random_state": self.config.random_state,
+                "deterministic": getattr(self.config, "deterministic", True),
                 "n_jobs": self.config.n_jobs,
                 "early_stopping_rounds": getattr(self.config, "early_stopping_rounds", 30),
             },
         }
+        if extra_metadata:
+            metadata["provenance_and_reproducibility"] = _serialize_for_json(extra_metadata)
+            for k, v in extra_metadata.items():
+                if k not in metadata:
+                    metadata[k] = _serialize_for_json(v)
+
         with open(metadata_path, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2)
         logger.info(f"Model serialized to {filepath} (companion metadata: {metadata_path})")

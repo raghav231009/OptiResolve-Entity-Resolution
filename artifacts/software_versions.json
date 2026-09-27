@@ -1,0 +1,11 @@
+{
+  "python": "3.13.4",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "lightgbm": "4.7.0",
+  "numpy": "2.3.0",
+  "pandas": "2.3.0",
+  "sklearn": "1.9.1",
+  "rapidfuzz": "3.14.6",
+  "joblib": "1.6.0",
+  "pytest": "9.1.1"
+}

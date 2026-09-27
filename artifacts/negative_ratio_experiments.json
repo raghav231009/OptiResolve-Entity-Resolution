@@ -1,0 +1,62 @@
+[
+  {
+    "max_neg_ratio_setting": 5,
+    "num_train_pairs": 78704,
+    "num_pos": 13866,
+    "num_neg": 64838,
+    "effective_ratio": 4.676042117409491,
+    "best_iteration": 221,
+    "train_time_sec": 0.9752728939056396,
+    "val_logloss": 0.007140313423884116,
+    "optimal_threshold": 0.84,
+    "macro_f05": 0.953122273244393
+  },
+  {
+    "max_neg_ratio_setting": 10,
+    "num_train_pairs": 131172,
+    "num_pos": 13866,
+    "num_neg": 117306,
+    "effective_ratio": 8.459974037213328,
+    "best_iteration": 219,
+    "train_time_sec": 0.9548308849334717,
+    "val_logloss": 0.006421531823753317,
+    "optimal_threshold": 0.804,
+    "macro_f05": 0.9535324715863758
+  },
+  {
+    "max_neg_ratio_setting": 15,
+    "num_train_pairs": 171997,
+    "num_pos": 13866,
+    "num_neg": 158131,
+    "effective_ratio": 11.404226164719457,
+    "best_iteration": 215,
+    "train_time_sec": 1.0884819030761719,
+    "val_logloss": 0.0061942145794271816,
+    "optimal_threshold": 0.85,
+    "macro_f05": 0.9524578064183272
+  },
+  {
+    "max_neg_ratio_setting": 20,
+    "num_train_pairs": 196577,
+    "num_pos": 13866,
+    "num_neg": 182711,
+    "effective_ratio": 13.176907543631906,
+    "best_iteration": 217,
+    "train_time_sec": 1.0864322185516357,
+    "val_logloss": 0.0062423330207169,
+    "optimal_threshold": 0.698,
+    "macro_f05": 0.9524243247660423
+  },
+  {
+    "max_neg_ratio_setting": 25,
+    "num_train_pairs": 211683,
+    "num_pos": 13866,
+    "num_neg": 197817,
+    "effective_ratio": 14.266334919948074,
+    "best_iteration": 214,
+    "train_time_sec": 1.1774625778198242,
+    "val_logloss": 0.0062511439256737475,
+    "optimal_threshold": 0.68,
+    "macro_f05": 0.953238560737335
+  }
+]

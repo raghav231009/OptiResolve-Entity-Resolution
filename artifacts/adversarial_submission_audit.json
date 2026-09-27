@@ -1,0 +1,82 @@
+{
+  "status": "PASSED",
+  "timestamp": "2026-09-27T09:57:57Z",
+  "inputs": {
+    "test_s1": "D:\\New folder (2)\\dataset\\test\\test_source1.tsv",
+    "test_s2": "D:\\New folder (2)\\dataset\\test\\test_source2.tsv",
+    "test_s3": "D:\\New folder (2)\\dataset\\test\\test_source3.tsv",
+    "matching_results": "D:\\New folder (2)\\output\\matching_results.tsv",
+    "candidate_pairs": "D:\\New folder (2)\\output\\candidate_pairs.tsv"
+  },
+  "violations": {
+    "matching_header_violation": null,
+    "candidate_header_violation": null,
+    "duplicate_s1_in_matching": 0,
+    "duplicate_s1_in_candidates": 0,
+    "missing_s1_in_matching": 0,
+    "missing_s1_in_candidates": 0,
+    "unexpected_s1_in_matching": 0,
+    "unexpected_s1_in_candidates": 0,
+    "candidate_subset_violations": 0,
+    "invalid_target_ids_in_matching": 0,
+    "invalid_target_ids_in_candidates": 0,
+    "cross_country_matches": 0,
+    "cross_country_candidates": 0,
+    "formatting_errors_matching": 0,
+    "formatting_errors_candidates": 0,
+    "forbidden_null_literals": 0,
+    "empty_match_syntax_errors": 0,
+    "candidate_count_exceeded": 0,
+    "order_desync_count": 0
+  },
+  "sample_violations": [],
+  "statistics": {
+    "audit_duration_seconds": 59.96,
+    "total_test_s1_entities": 1732544,
+    "total_rows_matching_tsv": 1732544,
+    "total_rows_candidate_tsv": 1732544,
+    "unique_s1_matching": 1732544,
+    "unique_s1_candidates": 1732544,
+    "total_predicted_matches": 5733062,
+    "empty_match_entities": 343572,
+    "empty_match_percentage": 19.83,
+    "matches_per_s1_mean": 3.309,
+    "matches_per_s1_percentiles": {
+      "p25": 1.0,
+      "p50": 3.0,
+      "p75": 5.0,
+      "p90": 7.0,
+      "p95": 8.0,
+      "p99": 10.0,
+      "max": 40
+    },
+    "total_candidates": 44794460,
+    "candidates_per_s1_mean": 25.85,
+    "candidates_per_s1_percentiles": {
+      "p25": 5.0,
+      "p50": 40.0,
+      "p75": 40.0,
+      "p90": 40.0,
+      "p95": 40.0,
+      "p99": 40.0,
+      "max": 40
+    },
+    "target_source_breakdown": {
+      "source2_matches": 2788951,
+      "source3_matches": 2944111,
+      "source2_pct": 48.65,
+      "source3_pct": 51.35
+    },
+    "country_matches_breakdown": {
+      "US": 2293644,
+      "FRANCE": 913604,
+      "INDIA": 2525814
+    },
+    "country_candidates_breakdown": {
+      "US": 18046065,
+      "FRANCE": 5815060,
+      "INDIA": 20933335
+    }
+  },
+  "total_violation_count": 0
+}

@@ -1,0 +1,785 @@
+{
+  "baseline": {
+    "best_iteration": 215,
+    "val_logloss": 0.0061942145794271816,
+    "optimal_threshold": 0.85,
+    "macro_f05": 0.9524578064183272
+  },
+  "feature_stats": {
+    "name_ratio": {
+      "pos_mean": 0.8014577627182007,
+      "pos_std": 0.24232372641563416,
+      "neg_mean": 0.5684114098548889,
+      "neg_std": 0.15418285131454468,
+      "s2_mean": 0.5813053846359253,
+      "s3_mean": 0.5942304134368896,
+      "by_country": {
+        "US": {
+          "mean": 0.5874314904212952,
+          "std": 0.1660059690475464
+        },
+        "INDIA": {
+          "mean": 0.5868518352508545,
+          "std": 0.18757657706737518
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 824,
+      "gain_importance": 3926.590825676918,
+      "perm_importance_drop": 0.001467193039999759
+    },
+    "name_partial_ratio": {
+      "pos_mean": 0.8767805695533752,
+      "pos_std": 0.23131884634494781,
+      "neg_mean": 0.6835969686508179,
+      "neg_std": 0.1566767692565918,
+      "s2_mean": 0.688502311706543,
+      "s3_mean": 0.7118987441062927,
+      "by_country": {
+        "US": {
+          "mean": 0.7037094235420227,
+          "std": 0.16633908450603485
+        },
+        "INDIA": {
+          "mean": 0.6923866271972656,
+          "std": 0.1803632378578186
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 1062,
+      "gain_importance": 16458.73003321886,
+      "perm_importance_drop": 0.008002961163297129
+    },
+    "name_token_sort_ratio": {
+      "pos_mean": 0.8105892539024353,
+      "pos_std": 0.2505917251110077,
+      "neg_mean": 0.5513991117477417,
+      "neg_std": 0.1535419374704361,
+      "s2_mean": 0.5664092302322388,
+      "s3_mean": 0.5793155431747437,
+      "by_country": {
+        "US": {
+          "mean": 0.5705031752586365,
+          "std": 0.1711391657590866
+        },
+        "INDIA": {
+          "mean": 0.5749721527099609,
+          "std": 0.18797093629837036
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 911,
+      "gain_importance": 7849.943973183632,
+      "perm_importance_drop": 0.0013864670779371036
+    },
+    "name_token_set_ratio": {
+      "pos_mean": 0.8710551261901855,
+      "pos_std": 0.2528572976589203,
+      "neg_mean": 0.6428853869438171,
+      "neg_std": 0.1823102980852127,
+      "s2_mean": 0.6498960852622986,
+      "s3_mean": 0.6748608946800232,
+      "by_country": {
+        "US": {
+          "mean": 0.65900719165802,
+          "std": 0.19189482927322388
+        },
+        "INDIA": {
+          "mean": 0.6646775007247925,
+          "std": 0.2089443951845169
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 726,
+      "gain_importance": 5058.592195212841,
+      "perm_importance_drop": 0.00032613156276595223
+    },
+    "name_jaro_winkler": {
+      "pos_mean": 0.8830015063285828,
+      "pos_std": 0.16713401675224304,
+      "neg_mean": 0.7134252786636353,
+      "neg_std": 0.1241055279970169,
+      "s2_mean": 0.7193188667297363,
+      "s3_mean": 0.7363743782043457,
+      "by_country": {
+        "US": {
+          "mean": 0.7330632209777832,
+          "std": 0.13728772103786469
+        },
+        "INDIA": {
+          "mean": 0.7181759476661682,
+          "std": 0.13400113582611084
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 996,
+      "gain_importance": 8229.87311911583,
+      "perm_importance_drop": 0.0043927783275790055
+    },
+    "name_char3_jaccard": {
+      "pos_mean": 0.6693105697631836,
+      "pos_std": 0.30009859800338745,
+      "neg_mean": 0.25249600410461426,
+      "neg_std": 0.17802157998085022,
+      "s2_mean": 0.2788996696472168,
+      "s3_mean": 0.2946870028972626,
+      "by_country": {
+        "US": {
+          "mean": 0.284005731344223,
+          "std": 0.2234327793121338
+        },
+        "INDIA": {
+          "mean": 0.28922727704048157,
+          "std": 0.2197464257478714
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 579,
+      "gain_importance": 12190.983481287956,
+      "perm_importance_drop": 0.0025971386433309984
+    },
+    "name_char4_jaccard": {
+      "pos_mean": 0.6345539093017578,
+      "pos_std": 0.313371866941452,
+      "neg_mean": 0.2185164839029312,
+      "neg_std": 0.17542564868927002,
+      "s2_mean": 0.2454046607017517,
+      "s3_mean": 0.2599921226501465,
+      "by_country": {
+        "US": {
+          "mean": 0.24959342181682587,
+          "std": 0.22428591549396515
+        },
+        "INDIA": {
+          "mean": 0.25573840737342834,
+          "std": 0.21708199381828308
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 554,
+      "gain_importance": 1592.6510582268238,
+      "perm_importance_drop": 0.00120008363592905
+    },
+    "name_token_containment": {
+      "pos_mean": 0.6645030975341797,
+      "pos_std": 0.47218090295791626,
+      "neg_mean": 0.07004951685667038,
+      "neg_std": 0.25523126125335693,
+      "s2_mean": 0.09741682559251785,
+      "s3_mean": 0.1424964964389801,
+      "by_country": {
+        "US": {
+          "mean": 0.13713769614696503,
+          "std": 0.3439943492412567
+        },
+        "INDIA": {
+          "mean": 0.08932404965162277,
+          "std": 0.28521299362182617
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 74,
+      "gain_importance": 484.6197624206543,
+      "perm_importance_drop": 0.00027680652680650564
+    },
+    "name_len_diff_ratio": {
+      "pos_mean": 0.13258850574493408,
+      "pos_std": 0.16658668220043182,
+      "neg_mean": 0.2657051980495453,
+      "neg_std": 0.1836852878332138,
+      "s2_mean": 0.25084590911865234,
+      "s3_mean": 0.25989800691604614,
+      "by_country": {
+        "US": {
+          "mean": 0.24728159606456757,
+          "std": 0.18184632062911987
+        },
+        "INDIA": {
+          "mean": 0.2664722800254822,
+          "std": 0.19130268692970276
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 1369,
+      "gain_importance": 4990.345229685307,
+      "perm_importance_drop": 0.0027682722312384334
+    },
+    "name_exact_match": {
+      "pos_mean": 0.258834570646286,
+      "pos_std": 0.4380103349685669,
+      "neg_mean": 0.0048187896609306335,
+      "neg_std": 0.06925026327371597,
+      "s2_mean": 0.02208043448626995,
+      "s3_mean": 0.02913426049053669,
+      "by_country": {
+        "US": {
+          "mean": 0.031215734779834747,
+          "std": 0.17390114068984985
+        },
+        "INDIA": {
+          "mean": 0.016449086368083954,
+          "std": 0.12719570100307465
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 0,
+      "gain_importance": 0.0,
+      "perm_importance_drop": 0.0
+    },
+    "root_name_exact_match": {
+      "pos_mean": 0.4130967855453491,
+      "pos_std": 0.4924076795578003,
+      "neg_mean": 0.0147156473249197,
+      "neg_std": 0.12041257321834564,
+      "s2_mean": 0.04258980229496956,
+      "s3_mean": 0.051893409341573715,
+      "by_country": {
+        "US": {
+          "mean": 0.0585695281624794,
+          "std": 0.23481838405132294
+        },
+        "INDIA": {
+          "mean": 0.02928633615374565,
+          "std": 0.16860918700695038
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 19,
+      "gain_importance": 33.03960171341896,
+      "perm_importance_drop": 6.249999999996536e-05
+    },
+    "addr_ratio": {
+      "pos_mean": 0.7687178254127502,
+      "pos_std": 0.23545078933238983,
+      "neg_mean": 0.3957834541797638,
+      "neg_std": 0.10152382403612137,
+      "s2_mean": 0.43321913480758667,
+      "s3_mean": 0.4170554280281067,
+      "by_country": {
+        "US": {
+          "mean": 0.4283617436885834,
+          "std": 0.16397066414356232
+        },
+        "INDIA": {
+          "mean": 0.42209160327911377,
+          "std": 0.1424587070941925
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 944,
+      "gain_importance": 7320.197519719601,
+      "perm_importance_drop": 0.0047044584369544395
+    },
+    "addr_token_sort_ratio": {
+      "pos_mean": 0.8254614472389221,
+      "pos_std": 0.22240667045116425,
+      "neg_mean": 0.4063066840171814,
+      "neg_std": 0.09532524645328522,
+      "s2_mean": 0.4455818235874176,
+      "s3_mean": 0.4335556924343109,
+      "by_country": {
+        "US": {
+          "mean": 0.44071000814437866,
+          "std": 0.16687563061714172
+        },
+        "INDIA": {
+          "mean": 0.4391830861568451,
+          "std": 0.147139310836792
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 909,
+      "gain_importance": 7035.6357906758785,
+      "perm_importance_drop": 0.0007232701593908875
+    },
+    "addr_token_set_ratio": {
+      "pos_mean": 0.89273601770401,
+      "pos_std": 0.20658732950687408,
+      "neg_mean": 0.4276562035083771,
+      "neg_std": 0.11694522947072983,
+      "s2_mean": 0.47023332118988037,
+      "s3_mean": 0.45908522605895996,
+      "by_country": {
+        "US": {
+          "mean": 0.45692822337150574,
+          "std": 0.1799226552248001
+        },
+        "INDIA": {
+          "mean": 0.4774401783943176,
+          "std": 0.1769365668296814
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 1045,
+      "gain_importance": 320181.3745158613,
+      "perm_importance_drop": 0.030960106187478353
+    },
+    "addr_jaccard": {
+      "pos_mean": 0.6621261835098267,
+      "pos_std": 0.25923940539360046,
+      "neg_mean": 0.05639059841632843,
+      "neg_std": 0.08397917449474335,
+      "s2_mean": 0.11196976155042648,
+      "s3_mean": 0.09717544168233871,
+      "by_country": {
+        "US": {
+          "mean": 0.10013999044895172,
+          "std": 0.19806203246116638
+        },
+        "INDIA": {
+          "mean": 0.1128230020403862,
+          "std": 0.19698785245418549
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 1044,
+      "gain_importance": 358584.6131489873,
+      "perm_importance_drop": 0.025966034787361147
+    },
+    "addr_present_both": {
+      "pos_mean": 0.9568008184432983,
+      "pos_std": 0.20331257581710815,
+      "neg_mean": 0.9920129776000977,
+      "neg_std": 0.08901295065879822,
+      "s2_mean": 0.988842248916626,
+      "s3_mean": 0.9895703196525574,
+      "by_country": {
+        "US": {
+          "mean": 0.9877058267593384,
+          "std": 0.11019591242074966
+        },
+        "INDIA": {
+          "mean": 0.9913693070411682,
+          "std": 0.09250042587518692
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 3,
+      "gain_importance": 7.876520156860352,
+      "perm_importance_drop": 0.0
+    },
+    "house_number_match": {
+      "pos_mean": 0.2912159264087677,
+      "pos_std": 0.8814337253570557,
+      "neg_mean": -0.25546541810035706,
+      "neg_std": 0.5177367925643921,
+      "s2_mean": -0.21705302596092224,
+      "s3_mean": -0.20464107394218445,
+      "by_country": {
+        "US": {
+          "mean": -0.2955937087535858,
+          "std": 0.5572203993797302
+        },
+        "INDIA": {
+          "mean": -0.08552364259958267,
+          "std": 0.5794579386711121
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 29.365047064774387,
+      "split_importance": 324,
+      "gain_importance": 5058.611041724682,
+      "perm_importance_drop": 0.006234539863718358
+    },
+    "postal_exact_match": {
+      "pos_mean": -0.8334775567054749,
+      "pos_std": 0.53983074426651,
+      "neg_mean": -0.9597042798995972,
+      "neg_std": 0.2259802371263504,
+      "s2_mean": -0.9523442983627319,
+      "s3_mean": -0.9461685419082642,
+      "by_country": {
+        "US": {
+          "mean": -0.9279621839523315,
+          "std": 0.3119581341743469
+        },
+        "INDIA": {
+          "mean": -0.9817667603492737,
+          "std": 0.1774211823940277
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 96.1377233323837,
+      "split_importance": 56,
+      "gain_importance": 132.2566334605217,
+      "perm_importance_drop": -7.9877112135196e-05
+    },
+    "postal_prefix_match": {
+      "pos_mean": -0.8275638222694397,
+      "pos_std": 0.5542157292366028,
+      "neg_mean": -0.9581549763679504,
+      "neg_std": 0.2357708215713501,
+      "s2_mean": -0.9505701661109924,
+      "s3_mean": -0.9441157579421997,
+      "by_country": {
+        "US": {
+          "mean": -0.9251288175582886,
+          "std": 0.32465651631355286
+        },
+        "INDIA": {
+          "mean": -0.9812590479850769,
+          "std": 0.1816110908985138
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 96.1377233323837,
+      "split_importance": 31,
+      "gain_importance": 85.57719454169273,
+      "perm_importance_drop": 0.0
+    },
+    "numeric_token_overlap": {
+      "pos_mean": 0.6810488700866699,
+      "pos_std": 0.4237707853317261,
+      "neg_mean": 0.02554415725171566,
+      "neg_std": 0.12371155619621277,
+      "s2_mean": 0.07039453834295273,
+      "s3_mean": 0.08792735636234283,
+      "by_country": {
+        "US": {
+          "mean": 0.06491407752037048,
+          "std": 0.23733898997306824
+        },
+        "INDIA": {
+          "mean": 0.09853348135948181,
+          "std": 0.2565072178840637
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 597,
+      "gain_importance": 23228.789892226458,
+      "perm_importance_drop": 0.009675155007923708
+    },
+    "target_source_is_s3": {
+      "pos_mean": 0.5126208066940308,
+      "pos_std": 0.49985870718955994,
+      "neg_mean": 0.4510311186313629,
+      "neg_std": 0.4975978434085846,
+      "s2_mean": 0.0,
+      "s3_mean": 1.0,
+      "by_country": {
+        "US": {
+          "mean": 0.4534674882888794,
+          "std": 0.49783241748809814
+        },
+        "INDIA": {
+          "mean": 0.4597766101360321,
+          "std": 0.4983830749988556
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 352,
+      "gain_importance": 2079.1684738099575,
+      "perm_importance_drop": 0.0025798765905321597
+    },
+    "country_match": {
+      "pos_mean": 1.0,
+      "pos_std": 0.0,
+      "neg_mean": 1.0,
+      "neg_std": 0.0,
+      "s2_mean": 1.0,
+      "s3_mean": 1.0,
+      "by_country": {
+        "US": {
+          "mean": 1.0,
+          "std": 0.0
+        },
+        "INDIA": {
+          "mean": 1.0,
+          "std": 0.0
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 0,
+      "gain_importance": 0.0,
+      "perm_importance_drop": 0.0
+    },
+    "combined_weighted_sim": {
+      "pos_mean": 0.893190860748291,
+      "pos_std": 0.16773635149002075,
+      "neg_mean": 0.5693044066429138,
+      "neg_std": 0.11083984375,
+      "s2_mean": 0.5898297429084778,
+      "s3_mean": 0.6020791530609131,
+      "by_country": {
+        "US": {
+          "mean": 0.5913785696029663,
+          "std": 0.1466151773929596
+        },
+        "INDIA": {
+          "mean": 0.6014499664306641,
+          "std": 0.14505936205387115
+        },
+        "FRANCE": {
+          "mean": NaN,
+          "std": NaN
+        }
+      },
+      "missing_sentinel_pct": 0.0,
+      "split_importance": 911,
+      "gain_importance": 194025.83433780074,
+      "perm_importance_drop": 0.0035614454850108057
+    }
+  },
+  "high_correlation_pairs": [
+    [
+      "name_ratio",
+      "name_token_sort_ratio",
+      0.8997863184179992
+    ],
+    [
+      "name_ratio",
+      "name_char3_jaccard",
+      0.8800085337209147
+    ],
+    [
+      "name_ratio",
+      "name_char4_jaccard",
+      0.863171493673553
+    ],
+    [
+      "name_partial_ratio",
+      "name_token_set_ratio",
+      0.8962093311552831
+    ],
+    [
+      "name_token_sort_ratio",
+      "name_char3_jaccard",
+      0.8768368678726715
+    ],
+    [
+      "name_token_sort_ratio",
+      "name_char4_jaccard",
+      0.8554439991737945
+    ],
+    [
+      "name_token_set_ratio",
+      "combined_weighted_sim",
+      0.9070811317868778
+    ],
+    [
+      "name_char3_jaccard",
+      "name_char4_jaccard",
+      0.9938941220000929
+    ],
+    [
+      "name_char3_jaccard",
+      "combined_weighted_sim",
+      0.8537964725864381
+    ],
+    [
+      "addr_ratio",
+      "addr_token_sort_ratio",
+      0.9224746507088387
+    ],
+    [
+      "addr_ratio",
+      "addr_token_set_ratio",
+      0.8911399121590302
+    ],
+    [
+      "addr_token_sort_ratio",
+      "addr_token_set_ratio",
+      0.9454594028328558
+    ],
+    [
+      "addr_token_sort_ratio",
+      "addr_jaccard",
+      0.8910367998274008
+    ],
+    [
+      "addr_token_set_ratio",
+      "addr_jaccard",
+      0.8908709154387433
+    ],
+    [
+      "postal_exact_match",
+      "postal_prefix_match",
+      0.9879209075588948
+    ]
+  ],
+  "ablation_results": [
+    {
+      "experiment": "Baseline (All 23 Features)",
+      "features_kept": 23,
+      "dropped_features": [],
+      "best_iteration": 215,
+      "val_logloss": 0.0061942145794271816,
+      "optimal_threshold": 0.85,
+      "macro_f05": 0.9524578064183272,
+      "delta_macro_f05": 0.0
+    },
+    {
+      "experiment": "- Name Features (Lexical)",
+      "features_kept": 14,
+      "dropped_features": [
+        "name_ratio",
+        "name_partial_ratio",
+        "name_token_sort_ratio",
+        "name_token_set_ratio",
+        "name_jaro_winkler",
+        "name_token_containment",
+        "name_len_diff_ratio",
+        "name_exact_match",
+        "root_name_exact_match"
+      ],
+      "best_iteration": 197,
+      "val_logloss": 0.00742939448955319,
+      "optimal_threshold": 0.84,
+      "macro_f05": 0.9492587894520538,
+      "delta_macro_f05": -0.003199016966273449
+    },
+    {
+      "experiment": "- Character N-Grams",
+      "features_kept": 21,
+      "dropped_features": [
+        "name_char3_jaccard",
+        "name_char4_jaccard"
+      ],
+      "best_iteration": 214,
+      "val_logloss": 0.006426645096814024,
+      "optimal_threshold": 0.846,
+      "macro_f05": 0.9522059429482478,
+      "delta_macro_f05": -0.00025186347007943866
+    },
+    {
+      "experiment": "- Address Features",
+      "features_kept": 18,
+      "dropped_features": [
+        "addr_ratio",
+        "addr_token_sort_ratio",
+        "addr_token_set_ratio",
+        "addr_jaccard",
+        "addr_present_both"
+      ],
+      "best_iteration": 262,
+      "val_logloss": 0.007854424925559125,
+      "optimal_threshold": 0.734,
+      "macro_f05": 0.9484303973269556,
+      "delta_macro_f05": -0.00402740909137167
+    },
+    {
+      "experiment": "- Number & Postal Features",
+      "features_kept": 19,
+      "dropped_features": [
+        "house_number_match",
+        "postal_exact_match",
+        "postal_prefix_match",
+        "numeric_token_overlap"
+      ],
+      "best_iteration": 300,
+      "val_logloss": 0.007019809702410424,
+      "optimal_threshold": 0.9,
+      "macro_f05": 0.9512763020431636,
+      "delta_macro_f05": -0.0011815043751636223
+    },
+    {
+      "experiment": "- Source Indicator (S3)",
+      "features_kept": 22,
+      "dropped_features": [
+        "target_source_is_s3"
+      ],
+      "best_iteration": 193,
+      "val_logloss": 0.006572474118197881,
+      "optimal_threshold": 0.6,
+      "macro_f05": 0.9500877887916345,
+      "delta_macro_f05": -0.0023700176266927553
+    },
+    {
+      "experiment": "- Combined Composite",
+      "features_kept": 22,
+      "dropped_features": [
+        "combined_weighted_sim"
+      ],
+      "best_iteration": 226,
+      "val_logloss": 0.006240128692231574,
+      "optimal_threshold": 0.852,
+      "macro_f05": 0.9551262929154902,
+      "delta_macro_f05": 0.002668486497163003
+    }
+  ]
+}

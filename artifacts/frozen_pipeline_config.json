@@ -1,0 +1,10 @@
+{
+  "status": "FROZEN",
+  "optimal_threshold": 0.84,
+  "n_estimators": 450,
+  "num_leaves": 31,
+  "learning_rate": 0.05,
+  "max_candidates_per_entity": 80,
+  "capping_strategy": "tiered",
+  "feature_count": 23
+}

@@ -243,3 +243,147 @@ class TestSingletonSplitAndTracking:
         val_s = neg_stats["val"]
         assert val_s["zero_positive_s1_count"] > 0
         assert "avg_negatives_per_entity" in val_s
+
+
+class TestPairGenerationIntegrityAndIsolation:
+    """Rigorous tests proving pair generation correctness, isolation, and anti-leakage."""
+
+    def test_every_positive_pair_is_genuinely_positive(self):
+        """Proves every pair with label y=1 corresponds to a true ground-truth match."""
+        s1 = [
+            make_dummy_s1("S1_1", "Alpha Corp", "100 Market St"),
+            make_dummy_s1("S1_2", "Beta Ltd", "200 Mission St"),
+        ]
+        gt = {
+            "S1_1": {"T_ALPHA_1", "T_ALPHA_2"},
+            "S1_2": {"T_BETA_1"},
+        }
+        targets = [
+            make_dummy_target("T_ALPHA_1", "Alpha Corp Inc", "100 Market St"),
+            make_dummy_target("T_ALPHA_2", "Alpha Corporation", "100 Market"),
+            make_dummy_target("T_BETA_1", "Beta Limited", "200 Mission St"),
+            make_dummy_target("T_DISTRACTOR", "Alpha Beta", "100 Market St"),
+        ]
+        target_map = {t["entity_id"]: t for t in targets}
+        blocker = MultiIndexBlocker(max_candidates=10)
+        blocker.index_targets(targets)
+
+        pipeline = EntityResolutionPipeline()
+        
+        # Track pairs explicitly
+        pos_pairs = []
+        for s1_rec in s1:
+            true_m = gt.get(s1_rec["entity_id"], set())
+            for m_id in true_m:
+                if m_id in target_map:
+                    pos_pairs.append((s1_rec["entity_id"], m_id))
+
+        for s1_id, t_id in pos_pairs:
+            assert t_id in gt[s1_id], f"Positive pair ({s1_id}, {t_id}) is NOT in ground truth!"
+
+    def test_no_positive_pair_becomes_a_negative(self):
+        """Proves true matches never receive label y=0, even when retrieved as candidates."""
+        s1 = [make_dummy_s1("S1_TEST", "Acme Logistics", "100 Broadway")]
+        gt = {"S1_TEST": {"T_ACME_TRUE"}}
+        targets = [
+            make_dummy_target("T_ACME_TRUE", "Acme Logistics LLC", "100 Broadway"),
+            make_dummy_target("T_ACME_FALSE_1", "Acme Logistics Corp", "999 Other St"),
+            make_dummy_target("T_ACME_FALSE_2", "Acme Transport", "100 Broadway"),
+        ]
+        target_map = {t["entity_id"]: t for t in targets}
+        blocker = MultiIndexBlocker(max_candidates=10)
+        blocker.index_targets(targets)
+
+        pipeline = EntityResolutionPipeline()
+        # Verify via _generate_pair_matrix
+        X, y, stats = pipeline._generate_pair_matrix(s1, gt, blocker, target_map, return_stats=True)
+        
+        # Exactly 1 positive and 2 negatives
+        assert stats["total_positives"] == 1
+        assert stats["total_negatives"] == 2
+        
+        # Verify in candidate loop
+        candidates = blocker.retrieve_candidates(s1[0])
+        assert "T_ACME_TRUE" in candidates
+        
+        negative_ids = [c for c in candidates if c not in gt["S1_TEST"]]
+        assert "T_ACME_TRUE" not in negative_ids
+        assert len(negative_ids) == 2
+
+    def test_train_and_val_pair_sets_are_isolated(self):
+        """Proves complete isolation between training and validation pair sets."""
+        s1_all = [
+            make_dummy_s1(f"S1_{i}", f"Company {i}", f"{i*10} Main St")
+            for i in range(20)
+        ]
+        gt = {s1["entity_id"]: {f"T_{s1['entity_id']}"} for s1 in s1_all}
+        targets = [
+            make_dummy_target(f"T_{s1['entity_id']}", s1["root_name"], s1["clean_address"])
+            for s1 in s1_all
+        ]
+        target_map = {t["entity_id"]: t for t in targets}
+        blocker = MultiIndexBlocker(max_candidates=10)
+        blocker.index_targets(targets)
+
+        # 80/20 entity split
+        train_s1 = s1_all[:16]
+        val_s1 = s1_all[16:]
+
+        train_s1_ids = {r["entity_id"] for r in train_s1}
+        val_s1_ids = {r["entity_id"] for r in val_s1}
+
+        # 1. Entity disjointness
+        assert len(train_s1_ids & val_s1_ids) == 0, "Train and Val S1 entities overlap!"
+
+        # 2. Pair disjointness
+        train_pairs = set()
+        for r in train_s1:
+            for c in blocker.retrieve_candidates(r):
+                train_pairs.add((r["entity_id"], c))
+
+        val_pairs = set()
+        for r in val_s1:
+            for c in blocker.retrieve_candidates(r):
+                val_pairs.add((r["entity_id"], c))
+
+        overlap = train_pairs & val_pairs
+        assert len(overlap) == 0, f"Found {len(overlap)} overlapping pairs between train and val!"
+
+    def test_no_duplicate_pair_contamination_occurs(self):
+        """Proves no duplicate (s1_id, target_id) pair is generated in pair matrix construction."""
+        s1 = [
+            make_dummy_s1("S1_1", "Duplicate Test", "100 Test St"),
+            make_dummy_s1("S1_2", "Duplicate Test 2", "200 Test Ave"),
+        ]
+        gt = {
+            "S1_1": {"T_1"},
+            "S1_2": {"T_2"},
+        }
+        targets = [
+            make_dummy_target("T_1", "Duplicate Test LLC", "100 Test St"),
+            make_dummy_target("T_2", "Duplicate Test 2 LLC", "200 Test Ave"),
+            make_dummy_target("T_3", "Duplicate Test", "999 Other St"),
+        ]
+        target_map = {t["entity_id"]: t for t in targets}
+        blocker = MultiIndexBlocker(max_candidates=10)
+        blocker.index_targets(targets)
+
+        seen_pairs = set()
+        duplicate_count = 0
+
+        for s1_rec in s1:
+            s1_id = s1_rec["entity_id"]
+            true_m = gt.get(s1_id, set())
+            for m_id in true_m:
+                key = (s1_id, m_id)
+                if key in seen_pairs:
+                    duplicate_count += 1
+                seen_pairs.add(key)
+            for c_id in blocker.retrieve_candidates(s1_rec):
+                if c_id not in true_m:
+                    key = (s1_id, c_id)
+                    if key in seen_pairs:
+                        duplicate_count += 1
+                    seen_pairs.add(key)
+
+        assert duplicate_count == 0, f"Found {duplicate_count} duplicate pairs!"

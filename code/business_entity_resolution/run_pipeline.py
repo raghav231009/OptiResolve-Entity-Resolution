@@ -28,10 +28,13 @@ def main():
     parser = argparse.ArgumentParser(description="OptiResolve Entity Resolution Pipeline")
     parser.add_argument(
         "--mode",
-        choices=["all", "dev-train", "final-train", "train", "predict"],
+        choices=["all", "lifecycle", "dev-train", "final-train", "train", "predict", "validate"],
         default=None,
-        help="Pipeline execution mode: dev-train (Phase A: split/tune/early-stop), final-train (Phase B: 100% data/freeze), predict (Phase C: inference), all, train",
+        help="Pipeline execution mode: lifecycle (Phases 1-10 end-to-end), dev-train (Phases 1-5), final-train (Phases 6-8), predict (Phase 9), validate (Phase 10), all, train",
     )
+    parser.add_argument("--lifecycle", action="store_true", help="Execute complete 10-phase competition-production lifecycle")
+    parser.add_argument("--validate", "--validate-output", action="store_true", dest="validate", help="Validate output submission files (Phase 10)")
+    parser.add_argument("--skip-test-inference", "--skip-test", action="store_true", dest="skip_test_inference", help="Skip Phase 9 test inference in lifecycle mode")
     parser.add_argument("--train", action="store_true", help="Train the LightGBM entity resolution model")
     parser.add_argument("--eval", action="store_true", help="Run validation and threshold optimization")
     parser.add_argument("--predict", action="store_true", help="Run streaming test inference and output generation")
@@ -77,6 +80,9 @@ def main():
         help="Explicit candidate cap K per entity override (default: configured in BlockingConfig)",
     )
     parser.add_argument("--batch-size", type=int, default=50000, help="Batch size for streaming test inference")
+    parser.add_argument("--resume", action="store_true", default=True, help="Enable checkpoint/resume recovery for test inference (default: True)")
+    parser.add_argument("--reset-inference", "--no-resume", action="store_false", dest="resume", help="Disable resume and reset output files from scratch")
+    parser.add_argument("--max-entities-per-country", type=int, default=None, help="Cap S1 entities per country for benchmarking")
     parser.add_argument(
         "--allow-missing-targets",
         action="store_true",
@@ -141,19 +147,35 @@ def main():
     pipeline = EntityResolutionPipeline(config)
 
     # Route execution based on mode and flags
-    if args.mode == "dev-train":
+    if args.mode == "lifecycle" or args.lifecycle:
+        pipeline.run_competition_lifecycle(
+            skip_test_inference=args.skip_test_inference,
+            validate_outputs=not args.skip_test_inference,
+        )
+    elif args.mode == "validate" or args.validate:
+        pipeline.phase10_validate_output()
+    elif args.mode == "dev-train":
         pipeline.fit_dev()
     elif args.mode == "final-train":
         pipeline.fit_final()
     elif args.mode == "predict":
         if config.paths.model_path.exists():
             pipeline.model.load(config.paths.model_path)
-        pipeline.predict_test(batch_size=args.batch_size)
+        pipeline.predict_test(
+            batch_size=args.batch_size,
+            resume=args.resume,
+            max_entities_per_country=args.max_entities_per_country,
+        )
     elif args.mode == "all":
-        # Full end-to-end: Dev tune -> Final 100% train -> Test predict
+        # Full end-to-end: Dev tune -> Final 100% train -> Test predict -> Validate output
         pipeline.fit_dev()
         pipeline.fit_final()
-        pipeline.predict_test(batch_size=args.batch_size)
+        pipeline.predict_test(
+            batch_size=args.batch_size,
+            resume=args.resume,
+            max_entities_per_country=args.max_entities_per_country,
+        )
+        pipeline.phase10_validate_output()
     elif args.mode == "train":
         if args.prod:
             pipeline.fit_final()

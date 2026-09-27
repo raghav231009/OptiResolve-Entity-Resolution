@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-09-27T09:40:37.077082+00:00",
+  "splits": {},
+  "files": {
+    "train_source1": {
+      "path": "D:\\dataset amazon\\student_resource\\dataset\\train\\train_source1.tsv",
+      "row_count": 2206821,
+      "size_bytes": 210069713,
+      "sha256": "f395bc17ee5c9fc323b2591c43c30b4ae02031579e58cecfeb17666c51e3203b"
+    },
+    "train_source2": {
+      "path": "D:\\dataset amazon\\student_resource\\dataset\\train\\train_source2.tsv",
+      "row_count": 5034616,
+      "size_bytes": 489301488,
+      "sha256": "94234b73cfae30b4a84f1fb7d571c8c54f86db7cd8a9a7634657577d9f1f4796"
+    },
+    "train_source3": {
+      "path": "D:\\dataset amazon\\student_resource\\dataset\\train\\train_source3.tsv",
+      "row_count": 5285603,
+      "size_bytes": 503705637,
+      "sha256": "4fa2d19d398449bfbcd6e22b5676d1819e372e569da743ef3be64793d8e9bf9d"
+    },
+    "train_ground_truth": {
+      "path": "D:\\dataset amazon\\student_resource\\dataset\\train\\train_ground_truth.tsv",
+      "row_count": 2206821,
+      "size_bytes": 127015583,
+      "sha256": "d4c3df72a22869de6eb8b0ac9cc3f458d0c0e257f1f10fffd09ebb40e6bbaa6c"
+    },
+    "test_source1": {
+      "path": "D:\\dataset amazon\\student_resource\\dataset\\test\\test_source1.tsv",
+      "row_count": 1732544,
+      "size_bytes": 175022086,
+      "sha256": "39edabced040eb818773be63b2342fb78e132e896024b4f80d5e5070f54c690a"
+    },
+    "test_source2": {
+      "path": "D:\\dataset amazon\\student_resource\\dataset\\test\\test_source2.tsv",
+      "row_count": 4887273,
+      "size_bytes": 509456422,
+      "sha256": "a525f49da17636071c410d73d88297fb5e5c376dab17eee4f9612702ee874768"
+    },
+    "test_source3": {
+      "path": "D:\\dataset amazon\\student_resource\\dataset\\test\\test_source3.tsv",
+      "row_count": 5082316,
+      "size_bytes": 506002772,
+      "sha256": "c7ad7d32141c4ae8d8e8852b8eaa87de4c7d735502bb38605b2217f15dbf73bd"
+    }
+  }
+}

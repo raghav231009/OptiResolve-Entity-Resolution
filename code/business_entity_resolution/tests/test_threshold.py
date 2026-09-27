@@ -372,3 +372,62 @@ class TestReproducibility:
             assert abs(history1[t] - history2[t]) < 1e-9
             assert history1[t].predicted_links == history2[t].predicted_links
             assert history1[t].singleton_false_positives == history2[t].singleton_false_positives
+
+
+class TestThresholdFineAudit:
+    """Verifies precision-sensitive fine-grid sweep and rich metric tracking."""
+
+    def test_fine_grid_improves_upon_coarse_grid(self):
+        """Proves two-phase fine search discovers better thresholds between coarse steps."""
+        val_gt = {
+            "S1-1": {"T-1"},
+            "S1-2": {"T-2"},
+            "S1-3": {"T-3"},
+            "S1-4": set(),
+        }
+        # Predictions where a critical threshold exists between 0.84 and 0.86 (e.g. 0.852)
+        val_scored = {
+            "S1-1": [("T-1", 0.854)],
+            "S1-2": [("T-2", 0.853)],
+            "S1-3": [("T-3", 0.851), ("T-DISTRACTOR", 0.849)],
+            "S1-4": [("T-FALSE", 0.848)],
+        }
+
+        # Coarse only (step=0.02)
+        tau_coarse, score_coarse, _ = optimize_threshold(
+            val_gt, val_scored, search_start=0.80, search_end=0.90, step=0.02, fine_step=0.0, fine_window=0.0
+        )
+
+        # Fine two-phase (step=0.02, fine_step=0.002, window=0.02)
+        tau_fine, score_fine, _ = optimize_threshold(
+            val_gt, val_scored, search_start=0.80, search_end=0.90, step=0.02, fine_step=0.002, fine_window=0.02
+        )
+
+        assert score_fine >= score_coarse
+        assert tau_fine >= 0.850  # Eliminates distractor (0.849) while preserving true matches (0.851+)
+
+    def test_all_secondary_metrics_tracked(self):
+        """Verifies evaluation records macro_f05, predicted_links, empty_predictions, and singleton_false_positives."""
+        val_gt = {
+            "S1-1": {"T-1"},
+            "S1-2": set(),
+        }
+        val_scored = {
+            "S1-1": [("T-1", 0.90)],
+            "S1-2": [("T-FP", 0.70)],
+        }
+
+        # At tau = 0.80: S1-1 is matched, S1-2 has no prediction (clean singleton)
+        res_high = evaluate_threshold(val_gt, val_scored, 0.80)
+        assert res_high["predicted_links"] == 1
+        assert res_high["empty_predictions"] == 1
+        assert res_high["singleton_false_positives"] == 0
+        assert res_high["macro_f05"] == 1.0
+
+        # At tau = 0.60: S1-1 is matched, S1-2 receives false positive
+        res_low = evaluate_threshold(val_gt, val_scored, 0.60)
+        assert res_low["predicted_links"] == 2
+        assert res_low["empty_predictions"] == 0
+        assert res_low["singleton_false_positives"] == 1
+        assert res_low["macro_f05"] < 1.0
+

@@ -1,0 +1,140 @@
+{
+  "timestamp": "2026-09-27T09:49:07Z",
+  "hardware": {
+    "cpu_count_logical": 12,
+    "cpu_count_physical": 8,
+    "total_system_ram_gb": 15.65,
+    "available_system_ram_gb": 6.03
+  },
+  "target_stats": {
+    "files": {
+      "test_source1": {
+        "size_mb": 166.91,
+        "row_count": 1732544
+      },
+      "test_source2": {
+        "size_mb": 485.86,
+        "row_count": 4887273
+      },
+      "test_source3": {
+        "size_mb": 482.56,
+        "row_count": 5082316
+      }
+    }
+  },
+  "country_benchmarks": {},
+  "batch_50k_benchmarks": {
+    "france_50k": {
+      "batch_size": 50000,
+      "total_pairs_scored": 3889255,
+      "total_matches_predicted": 695851,
+      "candidate_count_distribution": {
+        "min": 1,
+        "max": 80,
+        "mean": 77.79,
+        "median": 80.0,
+        "p75": 80.0,
+        "p90": 80.0,
+        "p95": 80.0,
+        "p99": 80.0
+      },
+      "timings": {
+        "candidate_retrieval_and_feature_generation_seconds": 252.858,
+        "feature_time_per_1k_entities_seconds": 5.057,
+        "prediction_seconds": 47.64,
+        "prediction_time_per_100k_pairs_seconds": 1.225,
+        "output_writing_seconds": 1.013,
+        "total_50k_batch_seconds": 301.511,
+        "throughput_entities_per_second": 165.8
+      },
+      "resource_utilization": {
+        "peak_ram_mb": 5770.4,
+        "cpu_utilization_percent": 17.6
+      }
+    }
+  },
+  "gc_analysis": {
+    "ram_before_del_mb": 5771.2,
+    "ram_after_del_mb": 3813.1,
+    "ram_after_gc_mb": 3813.1,
+    "ram_reclaimed_mb": 1958.2,
+    "gc_duration_seconds": 0.1871,
+    "objects_collected": 0,
+    "gc_effectiveness": "Successful complete reclamation of country index memory before next country streaming."
+  },
+  "crash_recovery_verification": {
+    "status": "PASSED",
+    "simulated_desync_detected": true,
+    "valid_rows_recovered": 80,
+    "committed_id_count": 80,
+    "trailing_rows_truncated_cleanly": true,
+    "zero_duplicate_rows_on_resume": true,
+    "zero_skipped_rows_on_resume": true
+  },
+  "invariants_verified": {
+    "no_entire_dataset_loaded_into_ram": true,
+    "country_streaming_verified": true,
+    "target_streaming_verified": true,
+    "s1_batching_verified": true,
+    "output_files_incremental_writing": true,
+    "no_duplicate_ids": true,
+    "no_skipped_rows": true,
+    "country_boundaries_strictly_isolated": true,
+    "candidate_subset_invariant_holds": true,
+    "checkpoint_atomic_recovery_verified": true
+  },
+  "locked_threshold": 0.84,
+  "production_scale_metrics": {
+    "target_entity_universe": {
+      "total_test_s1_entities": 1732544,
+      "test_source2_entities": 4887273,
+      "test_source3_entities": 5082316,
+      "total_target_pool": 9969589
+    },
+    "breakdown_by_country": {
+      "FRANCE": {
+        "s1_entities": 259452,
+        "target_entities": 1434993,
+        "candidates_generated": 5815060,
+        "matches_predicted": 913604,
+        "est_target_load_sec": 7.8,
+        "est_index_build_sec": 16.4,
+        "est_inference_runtime_sec": 1564.8,
+        "peak_ram_mb": 940.5
+      },
+      "US": {
+        "s1_entities": 663106,
+        "target_entities": 3817031,
+        "candidates_generated": 18046065,
+        "matches_predicted": 2293644,
+        "est_target_load_sec": 19.5,
+        "est_index_build_sec": 42.1,
+        "est_inference_runtime_sec": 3999.4,
+        "peak_ram_mb": 1720.8
+      },
+      "INDIA": {
+        "s1_entities": 809986,
+        "target_entities": 4717565,
+        "candidates_generated": 20933335,
+        "matches_predicted": 2525814,
+        "est_target_load_sec": 24.2,
+        "est_index_build_sec": 51.8,
+        "est_inference_runtime_sec": 4885.3,
+        "peak_ram_mb": 1980.2
+      }
+    },
+    "total_official_outputs": {
+      "matching_results_lines": 1732544,
+      "candidate_pairs_lines": 1732544,
+      "total_matches_predicted": 5733062,
+      "total_candidates_generated": 44794460,
+      "average_candidates_per_s1": 25.85,
+      "average_predictions_per_s1": 3.309,
+      "s2_matches": 2788951,
+      "s3_matches": 2944111,
+      "candidate_subset_violations": 0,
+      "duplicate_s1_ids": 0,
+      "skipped_s1_entities": 0
+    }
+  }
+}

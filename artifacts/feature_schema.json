@@ -1,0 +1,307 @@
+{
+  "schema_version": "2.0",
+  "feature_count": 23,
+  "feature_names": [
+    "name_ratio",
+    "name_partial_ratio",
+    "name_token_sort_ratio",
+    "name_token_set_ratio",
+    "name_jaro_winkler",
+    "name_char3_jaccard",
+    "name_char4_jaccard",
+    "name_token_containment",
+    "name_len_diff_ratio",
+    "name_exact_match",
+    "root_name_exact_match",
+    "addr_ratio",
+    "addr_token_sort_ratio",
+    "addr_token_set_ratio",
+    "addr_jaccard",
+    "addr_present_both",
+    "house_number_match",
+    "postal_exact_match",
+    "postal_prefix_match",
+    "numeric_token_overlap",
+    "target_source_is_s3",
+    "country_match",
+    "combined_weighted_sim"
+  ],
+  "features": [
+    {
+      "index": 0,
+      "name": "name_ratio",
+      "dtype": "float32",
+      "category": "name_similarity",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature name_ratio"
+    },
+    {
+      "index": 1,
+      "name": "name_partial_ratio",
+      "dtype": "float32",
+      "category": "name_similarity",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature name_partial_ratio"
+    },
+    {
+      "index": 2,
+      "name": "name_token_sort_ratio",
+      "dtype": "float32",
+      "category": "name_similarity",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature name_token_sort_ratio"
+    },
+    {
+      "index": 3,
+      "name": "name_token_set_ratio",
+      "dtype": "float32",
+      "category": "name_similarity",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature name_token_set_ratio"
+    },
+    {
+      "index": 4,
+      "name": "name_jaro_winkler",
+      "dtype": "float32",
+      "category": "name_similarity",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature name_jaro_winkler"
+    },
+    {
+      "index": 5,
+      "name": "name_char3_jaccard",
+      "dtype": "float32",
+      "category": "name_similarity",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature name_char3_jaccard"
+    },
+    {
+      "index": 6,
+      "name": "name_char4_jaccard",
+      "dtype": "float32",
+      "category": "name_similarity",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature name_char4_jaccard"
+    },
+    {
+      "index": 7,
+      "name": "name_token_containment",
+      "dtype": "float32",
+      "category": "name_similarity",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature name_token_containment"
+    },
+    {
+      "index": 8,
+      "name": "name_len_diff_ratio",
+      "dtype": "float32",
+      "category": "name_similarity",
+      "range": [
+        -1.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature name_len_diff_ratio"
+    },
+    {
+      "index": 9,
+      "name": "name_exact_match",
+      "dtype": "float32",
+      "category": "name_similarity",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature name_exact_match"
+    },
+    {
+      "index": 10,
+      "name": "root_name_exact_match",
+      "dtype": "float32",
+      "category": "composite_score",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature root_name_exact_match"
+    },
+    {
+      "index": 11,
+      "name": "addr_ratio",
+      "dtype": "float32",
+      "category": "address_similarity",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature addr_ratio"
+    },
+    {
+      "index": 12,
+      "name": "addr_token_sort_ratio",
+      "dtype": "float32",
+      "category": "address_similarity",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature addr_token_sort_ratio"
+    },
+    {
+      "index": 13,
+      "name": "addr_token_set_ratio",
+      "dtype": "float32",
+      "category": "address_similarity",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature addr_token_set_ratio"
+    },
+    {
+      "index": 14,
+      "name": "addr_jaccard",
+      "dtype": "float32",
+      "category": "address_similarity",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature addr_jaccard"
+    },
+    {
+      "index": 15,
+      "name": "addr_present_both",
+      "dtype": "float32",
+      "category": "address_similarity",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature addr_present_both"
+    },
+    {
+      "index": 16,
+      "name": "house_number_match",
+      "dtype": "float32",
+      "category": "composite_score",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature house_number_match"
+    },
+    {
+      "index": 17,
+      "name": "postal_exact_match",
+      "dtype": "float32",
+      "category": "exact_field_match",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature postal_exact_match"
+    },
+    {
+      "index": 18,
+      "name": "postal_prefix_match",
+      "dtype": "float32",
+      "category": "exact_field_match",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature postal_prefix_match"
+    },
+    {
+      "index": 19,
+      "name": "numeric_token_overlap",
+      "dtype": "float32",
+      "category": "composite_score",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature numeric_token_overlap"
+    },
+    {
+      "index": 20,
+      "name": "target_source_is_s3",
+      "dtype": "float32",
+      "category": "composite_score",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature target_source_is_s3"
+    },
+    {
+      "index": 21,
+      "name": "country_match",
+      "dtype": "float32",
+      "category": "exact_field_match",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature country_match"
+    },
+    {
+      "index": 22,
+      "name": "combined_weighted_sim",
+      "dtype": "float32",
+      "category": "composite_score",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "missing_value_handling": "Imputed to neutral / 0.0 distance or non-match",
+      "description": "Audited pairwise feature combined_weighted_sim"
+    }
+  ]
+}
