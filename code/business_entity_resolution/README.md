@@ -54,6 +54,7 @@ code/business_entity_resolution/
     ├── test_metrics.py             # Metric calculation tests
     ├── test_metrics_extended.py    # Extended edge cases for F0.5 formula
     ├── test_model.py               # LightGBM training, save/load, predict
+    ├── test_negative_sampling.py   # Singleton negative sampling, ratio balancing, tracking
     ├── test_normalization.py       # Multilingual normalization tests
     ├── test_normalization_extended.py  # Extended: fils, postal, building number edge cases
     ├── test_smoke_e2e.py           # Full pipeline smoke test with synthetic dataset

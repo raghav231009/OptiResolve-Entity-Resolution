@@ -8,7 +8,7 @@ import gc
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -294,18 +294,40 @@ class EntityResolutionPipeline:
         blocker: MultiIndexBlocker,
         target_map: Dict[str, Dict[str, Any]],
         desc: str = "Building Pairs",
-    ) -> Tuple[np.ndarray, np.ndarray]:
+        return_stats: bool = False,
+    ) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, Dict[str, Any]]]:
         """
-        Generate pairwise feature matrix (X) and binary labels (y) using the
-        exact same feature extraction and hard-negative mining procedure.
+        Generate pairwise feature matrix (X) and binary labels (y) using candidate
+        blocking retrieval, true match pairing, and hard-negative mining.
+
+        Supports balanced negative sampling for both matched and zero-positive/singleton entities:
+        - For entities with >=1 positive: mines up to (num_positives * max_negatives_per_positive) hard negatives.
+        - For entities with 0 positives: mines up to min_negatives_per_zero_positive_entity hard negatives.
+        - Strictly pulls candidates from the production blocker; never samples arbitrary random pairs.
+        - Strictly prevents true positive matches from receiving negative labels.
         """
         X_list, y_list = [], []
-        max_negatives = self.config.max_negatives_per_positive
+        max_neg_per_pos = self.config.max_negatives_per_positive
+        min_neg_zero_pos = self.config.min_negatives_per_zero_positive_entity
+
+        zero_positive_s1_count = 0
+        zero_positive_contributing = 0
+        positive_s1_count = 0
+        positive_contributing = 0
+        negatives_per_entity: List[int] = []
 
         for s1_rec in tqdm(s1_records, desc=desc):
             s1_id = s1_rec["entity_id"]
             true_matches = ground_truth.get(s1_id, set())
+            num_pos = len(true_matches)
             candidates = blocker.retrieve_candidates(s1_rec)
+
+            if num_pos == 0:
+                zero_positive_s1_count += 1
+                target_negatives = min_neg_zero_pos
+            else:
+                positive_s1_count += 1
+                target_negatives = num_pos * max_neg_per_pos
 
             # Positives
             for m_id in true_matches:
@@ -315,6 +337,8 @@ class EntityResolutionPipeline:
                     y_list.append(1)
 
             # Mined Hard Negatives from blocker candidates
+            # Requirement 5 & 6: Prefer blocker candidates; do not sample arbitrary negatives
+            # Requirement 10: Ensure negative labels are never accidentally assigned to true matches
             neg_count = 0
             for c_id in candidates:
                 if c_id not in true_matches and c_id in target_map:
@@ -322,11 +346,40 @@ class EntityResolutionPipeline:
                     X_list.append(feats)
                     y_list.append(0)
                     neg_count += 1
-                    if neg_count >= max_negatives:
+                    if neg_count >= target_negatives:
                         break
+
+            negatives_per_entity.append(neg_count)
+            if num_pos == 0 and neg_count > 0:
+                zero_positive_contributing += 1
+            elif num_pos > 0 and neg_count > 0:
+                positive_contributing += 1
 
         X = np.array(X_list, dtype=np.float32) if X_list else np.empty((0, len(FEATURE_NAMES)), dtype=np.float32)
         y = np.array(y_list, dtype=np.int32) if y_list else np.empty(0, dtype=np.int32)
+
+        total_positives = int(np.sum(y == 1))
+        total_negatives = int(np.sum(y == 0))
+        avg_negatives = float(np.mean(negatives_per_entity)) if negatives_per_entity else 0.0
+        min_negatives = int(min(negatives_per_entity)) if negatives_per_entity else 0
+        max_negatives = int(max(negatives_per_entity)) if negatives_per_entity else 0
+
+        stats = {
+            "total_s1_entities": len(s1_records),
+            "zero_positive_s1_count": zero_positive_s1_count,
+            "zero_positive_contributing_negatives": zero_positive_contributing,
+            "positive_s1_count": positive_s1_count,
+            "positive_contributing_negatives": positive_contributing,
+            "avg_negatives_per_entity": round(avg_negatives, 2),
+            "min_negatives_per_entity": min_negatives,
+            "max_negatives_per_entity": max_negatives,
+            "total_positives": total_positives,
+            "total_negatives": total_negatives,
+            "class_balance_ratio_neg_to_pos": round(total_negatives / total_positives, 2) if total_positives > 0 else 0.0,
+        }
+
+        if return_stats:
+            return X, y, stats
         return X, y
 
     def fit(self):
@@ -394,20 +447,40 @@ class EntityResolutionPipeline:
         # 3. SPLIT S1 FIRST into train and holdout validation sets (Prevents Validation Leakage)
         all_s1_list = list(train_s1)
         np.random.seed(self.config.random_seed)
-        np.random.shuffle(all_s1_list)
+
+        # Requirement 8: Ensure singleton entities are represented in both training and validation
+        singleton_s1 = [r for r in all_s1_list if len(gt.get(r["entity_id"], set())) == 0]
+        matched_s1 = [r for r in all_s1_list if len(gt.get(r["entity_id"], set())) > 0]
+        np.random.shuffle(singleton_s1)
+        np.random.shuffle(matched_s1)
 
         if self.config.val_s1_limit is not None:
             val_size = min(self.config.val_s1_limit, max(1, len(all_s1_list) - 1))
         else:
             val_size = max(500, len(all_s1_list) // 5)
 
-        val_s1 = all_s1_list[:val_size]
-        fit_s1 = all_s1_list[val_size:]
+        if len(singleton_s1) > 0 and len(matched_s1) > 0 and val_size > 1:
+            val_singletons = max(1, min(len(singleton_s1) - 1, int(round(val_size * (len(singleton_s1) / len(all_s1_list))))))
+            val_matched = min(len(matched_s1) - 1, val_size - val_singletons)
+            val_s1 = singleton_s1[:val_singletons] + matched_s1[:val_matched]
+            fit_s1 = singleton_s1[val_singletons:] + matched_s1[val_matched:]
+        else:
+            shuffled = list(all_s1_list)
+            np.random.shuffle(shuffled)
+            val_s1 = shuffled[:val_size]
+            fit_s1 = shuffled[val_size:]
 
         fit_s1_ids = {r["entity_id"] for r in fit_s1}
         val_s1_ids = {r["entity_id"] for r in val_s1}
         assert fit_s1_ids.isdisjoint(val_s1_ids), (
             f"Critical integrity failure: train and validation S1 sets overlap by {len(fit_s1_ids & val_s1_ids)} entities!"
+        )
+
+        fit_sing_count = sum(1 for r in fit_s1 if len(gt.get(r["entity_id"], set())) == 0)
+        val_sing_count = sum(1 for r in val_s1 if len(gt.get(r["entity_id"], set())) == 0)
+        logger.info(
+            f"S1 train/val split: {len(fit_s1):,} train ({fit_sing_count:,} singletons), "
+            f"{len(val_s1):,} val ({val_sing_count:,} singletons)."
         )
 
         val_gt = {r["entity_id"]: gt.get(r["entity_id"], set()) for r in val_s1}
@@ -483,25 +556,38 @@ class EntityResolutionPipeline:
 
         # 6. Build Training and Validation Pair Matrices using identical feature extraction
         logger.info("Generating training pairs using train_blocker...")
-        X_train, y_train = self._generate_pair_matrix(
-            fit_s1, fit_gt, train_blocker, train_target_map, desc="Building Train Pairs"
+        X_train, y_train, train_stats = self._generate_pair_matrix(
+            fit_s1, fit_gt, train_blocker, train_target_map, desc="Building Train Pairs", return_stats=True
         )
 
         logger.info("Generating validation pairs for model early stopping using val_blocker...")
-        X_val, y_val = self._generate_pair_matrix(
-            val_s1, val_gt, val_blocker, val_target_map, desc="Building Val Pairs"
+        X_val, y_val, val_stats = self._generate_pair_matrix(
+            val_s1, val_gt, val_blocker, val_target_map, desc="Building Val Pairs", return_stats=True
         )
 
-        train_pos = int(np.sum(y_train)) if len(y_train) > 0 else 0
-        train_neg = int(len(y_train) - train_pos)
-        val_pos = int(np.sum(y_val)) if len(y_val) > 0 else 0
-        val_neg = int(len(y_val) - val_pos)
+        train_pos = int(train_stats["total_positives"])
+        train_neg = int(train_stats["total_negatives"])
+        val_pos = int(val_stats["total_positives"])
+        val_neg = int(val_stats["total_negatives"])
 
-        # Requirement 5: Log training/validation pair counts and positives/negatives
+        # Requirement 7: Explicitly log negative sampling and class balance metrics
         logger.info("============================================================")
-        logger.info("PAIR MATRIX GENERATION & VALIDATION SUMMARY:")
-        logger.info(f"  Training Pair Count:         {len(X_train):,} (Pos: {train_pos:,}, Neg: {train_neg:,})")
-        logger.info(f"  Validation Pair Count:       {len(X_val):,} (Pos: {val_pos:,}, Neg: {val_neg:,})")
+        logger.info("NEGATIVE SAMPLING & CLASS BALANCE REPORT:")
+        logger.info("  Training Set:")
+        logger.info(f"    Total S1 Entities:                  {train_stats['total_s1_entities']:,}")
+        logger.info(f"    Zero-Positive (Singleton) Entities: {train_stats['zero_positive_s1_count']:,}")
+        logger.info(f"    Zero-Positives Contributing Negs:   {train_stats['zero_positive_contributing_negatives']:,}")
+        logger.info(f"    Matched Entities Contributing Negs: {train_stats['positive_contributing_negatives']:,}")
+        logger.info(f"    Average Negatives / Entity:         {train_stats['avg_negatives_per_entity']}")
+        logger.info(f"    Min / Max Negatives / Entity:       {train_stats['min_negatives_per_entity']} / {train_stats['max_negatives_per_entity']}")
+        logger.info(f"    Positives: {train_pos:,} | Negatives: {train_neg:,} (Ratio: 1:{train_stats['class_balance_ratio_neg_to_pos']})")
+        logger.info("  Validation Set:")
+        logger.info(f"    Total S1 Entities:                  {val_stats['total_s1_entities']:,}")
+        logger.info(f"    Zero-Positive (Singleton) Entities: {val_stats['zero_positive_s1_count']:,}")
+        logger.info(f"    Zero-Positives Contributing Negs:   {val_stats['zero_positive_contributing_negatives']:,}")
+        logger.info(f"    Average Negatives / Entity:         {val_stats['avg_negatives_per_entity']}")
+        logger.info(f"    Min / Max Negatives / Entity:       {val_stats['min_negatives_per_entity']} / {val_stats['max_negatives_per_entity']}")
+        logger.info(f"    Positives: {val_pos:,} | Negatives: {val_neg:,} (Ratio: 1:{val_stats['class_balance_ratio_neg_to_pos']})")
         logger.info("============================================================")
 
         # 7. Train LightGBM model WITH active validation early stopping
@@ -611,6 +697,12 @@ class EntityResolutionPipeline:
                 "is_strictly_disjoint": bool(len(intersection) == 0),
                 "multi_mapped_targets_count": int(cardinality_stats["multi_mapped_targets_count"]),
                 "max_s1_per_target": int(cardinality_stats["max_s1_per_target"]),
+            },
+            "negative_sampling_stats": {
+                "train": train_stats,
+                "val": val_stats,
+                "min_negatives_per_zero_positive_entity": int(self.config.min_negatives_per_zero_positive_entity),
+                "max_negatives_per_positive": int(self.config.max_negatives_per_positive),
             },
             "blocking_config": {
                 "max_candidates_per_entity": self.config.blocking.max_candidates_per_entity,

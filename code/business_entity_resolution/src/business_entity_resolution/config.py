@@ -137,6 +137,7 @@ class PipelineConfig:
     train_s1_limit: Optional[int] = None
     val_s1_limit: Optional[int] = None
     max_negatives_per_positive: int = 15
+    min_negatives_per_zero_positive_entity: int = 10
 
     # Threshold tuning
     threshold_search_start: float = 0.65
