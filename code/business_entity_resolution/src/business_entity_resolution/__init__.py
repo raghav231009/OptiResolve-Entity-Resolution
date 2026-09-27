@@ -9,6 +9,14 @@ from .features import compute_pair_features, FEATURE_NAMES
 from .metrics import compute_macro_f05, compute_entity_f05
 from .model import EntityResolutionModel
 from .threshold import optimize_threshold, evaluate_threshold, ThresholdMetric
+from .calibration import (
+    compute_distribution_statistics,
+    compute_ece,
+    compute_brier_score,
+    segment_probability_scores,
+    analyze_threshold_sensitivity,
+    evaluate_calibration_benefit,
+)
 
 __all__ = [
     "PipelineConfig",
@@ -27,4 +35,10 @@ __all__ = [
     "optimize_threshold",
     "evaluate_threshold",
     "ThresholdMetric",
+    "compute_distribution_statistics",
+    "compute_ece",
+    "compute_brier_score",
+    "segment_probability_scores",
+    "analyze_threshold_sensitivity",
+    "evaluate_calibration_benefit",
 ]

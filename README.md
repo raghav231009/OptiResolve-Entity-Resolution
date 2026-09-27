@@ -122,7 +122,7 @@ pip install -e .
 pytest tests/ -v
 ```
 
-Expected: **185 passed**
+Expected: **193 passed**
 
 ### 3. Measure Blocking Recall (requires dataset)
 
@@ -143,7 +143,18 @@ python evaluate_blocking.py
 
 *Evaluated on actual ground truth across 217,362 target records with the production 6-channel sub-blocking engine.*
 
-### 4. Run Full Pipeline (requires dataset)
+### 4. Audit Calibration & Threshold Sensitivity (requires dataset)
+
+```bash
+python evaluate_calibration.py
+```
+
+Outputs:
+- `artifacts/calibration_audit_results.json`: Full ECE, Brier score, and 2-fold cross-split benchmark.
+- `artifacts/threshold_sensitivity.csv`: Precision, Recall, Macro $F_{0.5}$, and local derivative $|dF_{0.5}/d\tau|$ across thresholds.
+- `artifacts/probability_distribution_summary.csv`: Summary statistics and quantiles for True Positives, Hard Negatives, Singleton Negatives, S2, and S3.
+
+### 5. Run Full Pipeline (requires dataset)
 
 ```bash
 # Final production training (enforces 100% of available train_source1 dataset):
@@ -162,7 +173,7 @@ python run_pipeline.py --predict
 python run_pipeline.py --mode all
 ```
 
-### 5. Validate Submission Files
+### 6. Validate Submission Files
 
 ```bash
 python utils/validate_submission.py \
