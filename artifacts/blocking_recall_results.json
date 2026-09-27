@@ -1,5 +1,5 @@
 {
-  "evaluated_at": "2026-09-27T06:33:21.362462+00:00",
+  "evaluated_at": "2026-09-27T06:49:04.277110+00:00",
   "sample_size": 5000,
   "matched_entities_evaluated": 4711,
   "singletons_evaluated": 289,
@@ -14,14 +14,14 @@
   "results_by_k": [
     {
       "K": 20,
-      "link_recall": 0.89143,
-      "link_recall_pct": "89.14%",
-      "entity_recall": 0.755041,
-      "entity_recall_pct": "75.50%",
-      "recovered_links": 15477,
+      "link_recall": 0.928061,
+      "link_recall_pct": "92.81%",
+      "entity_recall": 0.80726,
+      "entity_recall_pct": "80.73%",
+      "recovered_links": 16113,
       "total_true_links": 17362,
-      "missed_true_links": 1885,
-      "entities_with_complete_recall": 3557,
+      "missed_true_links": 1249,
+      "entities_with_complete_recall": 3803,
       "entities_evaluated": 4711,
       "candidate_count": 88105,
       "average_candidates_per_entity": 18.7,
@@ -35,7 +35,7 @@
       },
       "missed_links_by_category": {
         "missing_postal": 977,
-        "candidate_cap": 859,
+        "candidate_cap": 223,
         "missing_address": 35,
         "oversized_block": 3,
         "normalization": 9,
@@ -45,14 +45,14 @@
     },
     {
       "K": 40,
-      "link_recall": 0.89909,
-      "link_recall_pct": "89.91%",
-      "entity_recall": 0.773084,
-      "entity_recall_pct": "77.31%",
-      "recovered_links": 15610,
+      "link_recall": 0.931575,
+      "link_recall_pct": "93.16%",
+      "entity_recall": 0.817024,
+      "entity_recall_pct": "81.70%",
+      "recovered_links": 16174,
       "total_true_links": 17362,
-      "missed_true_links": 1752,
-      "entities_with_complete_recall": 3642,
+      "missed_true_links": 1188,
+      "entities_with_complete_recall": 3849,
       "entities_evaluated": 4711,
       "candidate_count": 162793,
       "average_candidates_per_entity": 34.56,
@@ -66,7 +66,7 @@
       },
       "missed_links_by_category": {
         "missing_postal": 977,
-        "candidate_cap": 727,
+        "candidate_cap": 163,
         "missing_address": 34,
         "oversized_block": 3,
         "normalization": 9,
@@ -76,14 +76,14 @@
     },
     {
       "K": 60,
-      "link_recall": 0.901336,
-      "link_recall_pct": "90.13%",
-      "entity_recall": 0.778391,
-      "entity_recall_pct": "77.84%",
-      "recovered_links": 15649,
+      "link_recall": 0.933475,
+      "link_recall_pct": "93.35%",
+      "entity_recall": 0.823392,
+      "entity_recall_pct": "82.34%",
+      "recovered_links": 16207,
       "total_true_links": 17362,
-      "missed_true_links": 1713,
-      "entities_with_complete_recall": 3667,
+      "missed_true_links": 1155,
+      "entities_with_complete_recall": 3879,
       "entities_evaluated": 4711,
       "candidate_count": 228692,
       "average_candidates_per_entity": 48.54,
@@ -97,7 +97,7 @@
       },
       "missed_links_by_category": {
         "missing_postal": 977,
-        "candidate_cap": 688,
+        "candidate_cap": 130,
         "missing_address": 34,
         "oversized_block": 3,
         "normalization": 9,
@@ -107,14 +107,14 @@
     },
     {
       "K": 80,
-      "link_recall": 0.903928,
-      "link_recall_pct": "90.39%",
-      "entity_recall": 0.782849,
-      "entity_recall_pct": "78.28%",
-      "recovered_links": 15694,
+      "link_recall": 0.93457,
+      "link_recall_pct": "93.46%",
+      "entity_recall": 0.826152,
+      "entity_recall_pct": "82.62%",
+      "recovered_links": 16226,
       "total_true_links": 17362,
-      "missed_true_links": 1668,
-      "entities_with_complete_recall": 3688,
+      "missed_true_links": 1136,
+      "entities_with_complete_recall": 3892,
       "entities_evaluated": 4711,
       "candidate_count": 288661,
       "average_candidates_per_entity": 61.27,
@@ -128,7 +128,7 @@
       },
       "missed_links_by_category": {
         "missing_postal": 976,
-        "candidate_cap": 644,
+        "candidate_cap": 112,
         "missing_address": 34,
         "oversized_block": 3,
         "normalization": 9,
@@ -138,14 +138,14 @@
     },
     {
       "K": 100,
-      "link_recall": 0.905368,
-      "link_recall_pct": "90.54%",
-      "entity_recall": 0.785608,
-      "entity_recall_pct": "78.56%",
-      "recovered_links": 15719,
+      "link_recall": 0.935434,
+      "link_recall_pct": "93.54%",
+      "entity_recall": 0.828699,
+      "entity_recall_pct": "82.87%",
+      "recovered_links": 16241,
       "total_true_links": 17362,
-      "missed_true_links": 1643,
-      "entities_with_complete_recall": 3701,
+      "missed_true_links": 1121,
+      "entities_with_complete_recall": 3904,
       "entities_evaluated": 4711,
       "candidate_count": 344636,
       "average_candidates_per_entity": 73.16,
@@ -159,8 +159,8 @@
       },
       "missed_links_by_category": {
         "missing_postal": 976,
-        "candidate_cap": 619,
         "missing_address": 34,
+        "candidate_cap": 97,
         "oversized_block": 3,
         "normalization": 9,
         "building_mismatch": 1,
@@ -169,14 +169,14 @@
     },
     {
       "K": 150,
-      "link_recall": 0.9094,
-      "link_recall_pct": "90.94%",
-      "entity_recall": 0.792825,
-      "entity_recall_pct": "79.28%",
-      "recovered_links": 15789,
+      "link_recall": 0.937334,
+      "link_recall_pct": "93.73%",
+      "entity_recall": 0.834855,
+      "entity_recall_pct": "83.49%",
+      "recovered_links": 16274,
       "total_true_links": 17362,
-      "missed_true_links": 1573,
-      "entities_with_complete_recall": 3735,
+      "missed_true_links": 1088,
+      "entities_with_complete_recall": 3933,
       "entities_evaluated": 4711,
       "candidate_count": 472572,
       "average_candidates_per_entity": 100.31,
@@ -190,8 +190,8 @@
       },
       "missed_links_by_category": {
         "missing_postal": 975,
-        "candidate_cap": 550,
         "missing_address": 34,
+        "candidate_cap": 65,
         "oversized_block": 3,
         "normalization": 9,
         "building_mismatch": 1,
@@ -202,450 +202,450 @@
   "country_breakdown_by_k": {
     "20": {
       "US": {
-        "link_recall": 0.957948,
-        "link_recall_pct": "95.79%",
-        "entity_recall": 0.87237,
-        "entity_recall_pct": "87.24%",
+        "link_recall": 0.963955,
+        "link_recall_pct": "96.40%",
+        "entity_recall": 0.887798,
+        "entity_recall_pct": "88.78%",
         "true_links": 10487,
-        "recovered_links": 10046,
+        "recovered_links": 10109,
         "total_entities": 2852,
-        "complete_entities": 2488
+        "complete_entities": 2532
       },
       "INDIA": {
-        "link_recall": 0.789964,
-        "link_recall_pct": "79.00%",
-        "entity_recall": 0.57504,
-        "entity_recall_pct": "57.50%",
+        "link_recall": 0.873309,
+        "link_recall_pct": "87.33%",
+        "entity_recall": 0.683701,
+        "entity_recall_pct": "68.37%",
         "true_links": 6875,
-        "recovered_links": 5431,
+        "recovered_links": 6004,
         "total_entities": 1859,
-        "complete_entities": 1069
+        "complete_entities": 1271
       }
     },
     "40": {
       "US": {
-        "link_recall": 0.966149,
-        "link_recall_pct": "96.61%",
-        "entity_recall": 0.895161,
-        "entity_recall_pct": "89.52%",
+        "link_recall": 0.967102,
+        "link_recall_pct": "96.71%",
+        "entity_recall": 0.896914,
+        "entity_recall_pct": "89.69%",
         "true_links": 10487,
-        "recovered_links": 10132,
+        "recovered_links": 10142,
         "total_entities": 2852,
-        "complete_entities": 2553
+        "complete_entities": 2558
       },
       "INDIA": {
-        "link_recall": 0.7968,
-        "link_recall_pct": "79.68%",
-        "entity_recall": 0.585799,
-        "entity_recall_pct": "58.58%",
+        "link_recall": 0.877382,
+        "link_recall_pct": "87.74%",
+        "entity_recall": 0.694459,
+        "entity_recall_pct": "69.45%",
         "true_links": 6875,
-        "recovered_links": 5478,
+        "recovered_links": 6032,
         "total_entities": 1859,
-        "complete_entities": 1089
+        "complete_entities": 1291
       }
     },
     "60": {
       "US": {
-        "link_recall": 0.968628,
-        "link_recall_pct": "96.86%",
-        "entity_recall": 0.902525,
-        "entity_recall_pct": "90.25%",
+        "link_recall": 0.968532,
+        "link_recall_pct": "96.85%",
+        "entity_recall": 0.901823,
+        "entity_recall_pct": "90.18%",
         "true_links": 10487,
-        "recovered_links": 10158,
+        "recovered_links": 10157,
         "total_entities": 2852,
-        "complete_entities": 2574
+        "complete_entities": 2572
       },
       "INDIA": {
-        "link_recall": 0.798691,
-        "link_recall_pct": "79.87%",
-        "entity_recall": 0.587951,
-        "entity_recall_pct": "58.80%",
+        "link_recall": 0.88,
+        "link_recall_pct": "88.00%",
+        "entity_recall": 0.703066,
+        "entity_recall_pct": "70.31%",
         "true_links": 6875,
-        "recovered_links": 5491,
+        "recovered_links": 6050,
         "total_entities": 1859,
-        "complete_entities": 1093
+        "complete_entities": 1307
       }
     },
     "80": {
       "US": {
-        "link_recall": 0.969867,
-        "link_recall_pct": "96.99%",
-        "entity_recall": 0.906381,
-        "entity_recall_pct": "90.64%",
+        "link_recall": 0.969486,
+        "link_recall_pct": "96.95%",
+        "entity_recall": 0.904979,
+        "entity_recall_pct": "90.50%",
         "true_links": 10487,
-        "recovered_links": 10171,
+        "recovered_links": 10167,
         "total_entities": 2852,
-        "complete_entities": 2585
+        "complete_entities": 2581
       },
       "INDIA": {
-        "link_recall": 0.803345,
-        "link_recall_pct": "80.33%",
-        "entity_recall": 0.59333,
-        "entity_recall_pct": "59.33%",
+        "link_recall": 0.881309,
+        "link_recall_pct": "88.13%",
+        "entity_recall": 0.705218,
+        "entity_recall_pct": "70.52%",
         "true_links": 6875,
-        "recovered_links": 5523,
+        "recovered_links": 6059,
         "total_entities": 1859,
-        "complete_entities": 1103
+        "complete_entities": 1311
       }
     },
     "100": {
       "US": {
-        "link_recall": 0.970344,
-        "link_recall_pct": "97.03%",
-        "entity_recall": 0.908135,
-        "entity_recall_pct": "90.81%",
+        "link_recall": 0.970154,
+        "link_recall_pct": "97.02%",
+        "entity_recall": 0.907433,
+        "entity_recall_pct": "90.74%",
         "true_links": 10487,
-        "recovered_links": 10176,
+        "recovered_links": 10174,
         "total_entities": 2852,
-        "complete_entities": 2590
+        "complete_entities": 2588
       },
       "INDIA": {
-        "link_recall": 0.806255,
-        "link_recall_pct": "80.63%",
-        "entity_recall": 0.597633,
-        "entity_recall_pct": "59.76%",
+        "link_recall": 0.882473,
+        "link_recall_pct": "88.25%",
+        "entity_recall": 0.707907,
+        "entity_recall_pct": "70.79%",
         "true_links": 6875,
-        "recovered_links": 5543,
+        "recovered_links": 6067,
         "total_entities": 1859,
-        "complete_entities": 1111
+        "complete_entities": 1316
       }
     },
     "150": {
       "US": {
-        "link_recall": 0.971298,
-        "link_recall_pct": "97.13%",
-        "entity_recall": 0.91094,
-        "entity_recall_pct": "91.09%",
+        "link_recall": 0.97187,
+        "link_recall_pct": "97.19%",
+        "entity_recall": 0.913394,
+        "entity_recall_pct": "91.34%",
         "true_links": 10487,
-        "recovered_links": 10186,
+        "recovered_links": 10192,
         "total_entities": 2852,
-        "complete_entities": 2598
+        "complete_entities": 2605
       },
       "INDIA": {
-        "link_recall": 0.814982,
-        "link_recall_pct": "81.50%",
-        "entity_recall": 0.611619,
-        "entity_recall_pct": "61.16%",
+        "link_recall": 0.884655,
+        "link_recall_pct": "88.47%",
+        "entity_recall": 0.714363,
+        "entity_recall_pct": "71.44%",
         "true_links": 6875,
-        "recovered_links": 5603,
+        "recovered_links": 6082,
         "total_entities": 1859,
-        "complete_entities": 1137
+        "complete_entities": 1328
       }
     }
   },
   "source_breakdown_by_k": {
     "20": {
       "S2": {
-        "link_recall": 0.878313,
-        "link_recall_pct": "87.83%",
+        "link_recall": 0.924896,
+        "link_recall_pct": "92.49%",
         "true_links": 8415,
-        "recovered_links": 7391
+        "recovered_links": 7783
       },
       "S3": {
-        "link_recall": 0.903767,
-        "link_recall_pct": "90.38%",
+        "link_recall": 0.931038,
+        "link_recall_pct": "93.10%",
         "true_links": 8947,
-        "recovered_links": 8086
+        "recovered_links": 8330
       }
     },
     "40": {
       "S2": {
-        "link_recall": 0.884967,
-        "link_recall_pct": "88.50%",
+        "link_recall": 0.928461,
+        "link_recall_pct": "92.85%",
         "true_links": 8415,
-        "recovered_links": 7447
+        "recovered_links": 7813
       },
       "S3": {
-        "link_recall": 0.912373,
-        "link_recall_pct": "91.24%",
+        "link_recall": 0.934503,
+        "link_recall_pct": "93.45%",
         "true_links": 8947,
-        "recovered_links": 8163
+        "recovered_links": 8361
       }
     },
     "60": {
       "S2": {
-        "link_recall": 0.887225,
-        "link_recall_pct": "88.72%",
+        "link_recall": 0.930362,
+        "link_recall_pct": "93.04%",
         "true_links": 8415,
-        "recovered_links": 7466
+        "recovered_links": 7829
       },
       "S3": {
-        "link_recall": 0.914608,
-        "link_recall_pct": "91.46%",
+        "link_recall": 0.936403,
+        "link_recall_pct": "93.64%",
         "true_links": 8947,
-        "recovered_links": 8183
+        "recovered_links": 8378
       }
     },
     "80": {
       "S2": {
-        "link_recall": 0.890315,
-        "link_recall_pct": "89.03%",
+        "link_recall": 0.931551,
+        "link_recall_pct": "93.16%",
         "true_links": 8415,
-        "recovered_links": 7492
+        "recovered_links": 7839
       },
       "S3": {
-        "link_recall": 0.916732,
-        "link_recall_pct": "91.67%",
+        "link_recall": 0.937409,
+        "link_recall_pct": "93.74%",
         "true_links": 8947,
-        "recovered_links": 8202
+        "recovered_links": 8387
       }
     },
     "100": {
       "S2": {
-        "link_recall": 0.89186,
-        "link_recall_pct": "89.19%",
+        "link_recall": 0.932383,
+        "link_recall_pct": "93.24%",
         "true_links": 8415,
-        "recovered_links": 7505
+        "recovered_links": 7846
       },
       "S3": {
-        "link_recall": 0.918073,
-        "link_recall_pct": "91.81%",
+        "link_recall": 0.938303,
+        "link_recall_pct": "93.83%",
         "true_links": 8947,
-        "recovered_links": 8214
+        "recovered_links": 8395
       }
     },
     "150": {
       "S2": {
-        "link_recall": 0.896613,
-        "link_recall_pct": "89.66%",
+        "link_recall": 0.934284,
+        "link_recall_pct": "93.43%",
         "true_links": 8415,
-        "recovered_links": 7545
+        "recovered_links": 7862
       },
       "S3": {
-        "link_recall": 0.921426,
-        "link_recall_pct": "92.14%",
+        "link_recall": 0.940203,
+        "link_recall_pct": "94.02%",
         "true_links": 8947,
-        "recovered_links": 8244
+        "recovered_links": 8412
       }
     }
   },
   "cardinality_breakdown_by_k": {
     "20": {
       "1": {
-        "link_recall": 0.844106,
-        "link_recall_pct": "84.41%",
-        "entity_recall": 0.844106,
-        "entity_recall_pct": "84.41%",
+        "link_recall": 0.904943,
+        "link_recall_pct": "90.49%",
+        "entity_recall": 0.904943,
+        "entity_recall_pct": "90.49%",
         "entities": 263,
         "true_links": 263,
-        "recovered_links": 222
+        "recovered_links": 238
       },
       "2": {
-        "link_recall": 0.878641,
-        "link_recall_pct": "87.86%",
-        "entity_recall": 0.800971,
-        "entity_recall_pct": "80.10%",
+        "link_recall": 0.928398,
+        "link_recall_pct": "92.84%",
+        "entity_recall": 0.870146,
+        "entity_recall_pct": "87.01%",
         "entities": 824,
         "true_links": 1648,
-        "recovered_links": 1448
+        "recovered_links": 1530
       },
       "3": {
-        "link_recall": 0.895609,
-        "link_recall_pct": "89.56%",
-        "entity_recall": 0.782933,
-        "entity_recall_pct": "78.29%",
+        "link_recall": 0.925987,
+        "link_recall_pct": "92.60%",
+        "entity_recall": 0.8285,
+        "entity_recall_pct": "82.85%",
         "entities": 1207,
         "true_links": 3621,
-        "recovered_links": 3243
+        "recovered_links": 3353
       },
       "4+": {
-        "link_recall": 0.892984,
-        "link_recall_pct": "89.30%",
-        "entity_recall": 0.715763,
-        "entity_recall_pct": "71.58%",
+        "link_recall": 0.929163,
+        "link_recall_pct": "92.92%",
+        "entity_recall": 0.764584,
+        "entity_recall_pct": "76.46%",
         "entities": 2417,
         "true_links": 11830,
-        "recovered_links": 10564
+        "recovered_links": 10992
       }
     },
     "40": {
       "1": {
-        "link_recall": 0.855513,
-        "link_recall_pct": "85.55%",
-        "entity_recall": 0.855513,
-        "entity_recall_pct": "85.55%",
+        "link_recall": 0.908745,
+        "link_recall_pct": "90.87%",
+        "entity_recall": 0.908745,
+        "entity_recall_pct": "90.87%",
         "entities": 263,
         "true_links": 263,
-        "recovered_links": 225
+        "recovered_links": 239
       },
       "2": {
-        "link_recall": 0.882282,
-        "link_recall_pct": "88.23%",
-        "entity_recall": 0.807039,
-        "entity_recall_pct": "80.70%",
+        "link_recall": 0.930218,
+        "link_recall_pct": "93.02%",
+        "entity_recall": 0.873786,
+        "entity_recall_pct": "87.38%",
         "entities": 824,
         "true_links": 1648,
-        "recovered_links": 1454
+        "recovered_links": 1533
       },
       "3": {
-        "link_recall": 0.903065,
-        "link_recall_pct": "90.31%",
-        "entity_recall": 0.799503,
-        "entity_recall_pct": "79.95%",
+        "link_recall": 0.929301,
+        "link_recall_pct": "92.93%",
+        "entity_recall": 0.837614,
+        "entity_recall_pct": "83.76%",
         "entities": 1207,
         "true_links": 3621,
-        "recovered_links": 3270
+        "recovered_links": 3365
       },
       "4+": {
-        "link_recall": 0.901183,
-        "link_recall_pct": "90.12%",
-        "entity_recall": 0.739346,
-        "entity_recall_pct": "73.93%",
+        "link_recall": 0.932967,
+        "link_recall_pct": "93.30%",
+        "entity_recall": 0.77741,
+        "entity_recall_pct": "77.74%",
         "entities": 2417,
         "true_links": 11830,
-        "recovered_links": 10661
+        "recovered_links": 11037
       }
     },
     "60": {
       "1": {
-        "link_recall": 0.855513,
-        "link_recall_pct": "85.55%",
-        "entity_recall": 0.855513,
-        "entity_recall_pct": "85.55%",
+        "link_recall": 0.912548,
+        "link_recall_pct": "91.25%",
+        "entity_recall": 0.912548,
+        "entity_recall_pct": "91.25%",
         "entities": 263,
         "true_links": 263,
-        "recovered_links": 225
+        "recovered_links": 240
       },
       "2": {
-        "link_recall": 0.884102,
-        "link_recall_pct": "88.41%",
-        "entity_recall": 0.81068,
-        "entity_recall_pct": "81.07%",
+        "link_recall": 0.932039,
+        "link_recall_pct": "93.20%",
+        "entity_recall": 0.877427,
+        "entity_recall_pct": "87.74%",
         "entities": 824,
         "true_links": 1648,
-        "recovered_links": 1457
+        "recovered_links": 1536
       },
       "3": {
-        "link_recall": 0.904999,
-        "link_recall_pct": "90.50%",
-        "entity_recall": 0.802817,
-        "entity_recall_pct": "80.28%",
+        "link_recall": 0.930406,
+        "link_recall_pct": "93.04%",
+        "entity_recall": 0.840928,
+        "entity_recall_pct": "84.09%",
         "entities": 1207,
         "true_links": 3621,
-        "recovered_links": 3277
+        "recovered_links": 3369
       },
       "4+": {
-        "link_recall": 0.903635,
-        "link_recall_pct": "90.36%",
-        "entity_recall": 0.746794,
-        "entity_recall_pct": "74.68%",
+        "link_recall": 0.93508,
+        "link_recall_pct": "93.51%",
+        "entity_recall": 0.786512,
+        "entity_recall_pct": "78.65%",
         "entities": 2417,
         "true_links": 11830,
-        "recovered_links": 10690
+        "recovered_links": 11062
       }
     },
     "80": {
       "1": {
-        "link_recall": 0.859316,
-        "link_recall_pct": "85.93%",
-        "entity_recall": 0.859316,
-        "entity_recall_pct": "85.93%",
+        "link_recall": 0.91635,
+        "link_recall_pct": "91.63%",
+        "entity_recall": 0.91635,
+        "entity_recall_pct": "91.63%",
         "entities": 263,
         "true_links": 263,
-        "recovered_links": 226
+        "recovered_links": 241
       },
       "2": {
-        "link_recall": 0.885316,
-        "link_recall_pct": "88.53%",
-        "entity_recall": 0.813107,
-        "entity_recall_pct": "81.31%",
+        "link_recall": 0.932646,
+        "link_recall_pct": "93.26%",
+        "entity_recall": 0.878641,
+        "entity_recall_pct": "87.86%",
         "entities": 824,
         "true_links": 1648,
-        "recovered_links": 1459
+        "recovered_links": 1537
       },
       "3": {
-        "link_recall": 0.906656,
-        "link_recall_pct": "90.67%",
-        "entity_recall": 0.806131,
-        "entity_recall_pct": "80.61%",
+        "link_recall": 0.931234,
+        "link_recall_pct": "93.12%",
+        "entity_recall": 0.842585,
+        "entity_recall_pct": "84.26%",
         "entities": 1207,
         "true_links": 3621,
-        "recovered_links": 3283
+        "recovered_links": 3372
       },
       "4+": {
-        "link_recall": 0.906678,
-        "link_recall_pct": "90.67%",
-        "entity_recall": 0.752586,
-        "entity_recall_pct": "75.26%",
+        "link_recall": 0.936264,
+        "link_recall_pct": "93.63%",
+        "entity_recall": 0.790236,
+        "entity_recall_pct": "79.02%",
         "entities": 2417,
         "true_links": 11830,
-        "recovered_links": 10726
+        "recovered_links": 11076
       }
     },
     "100": {
       "1": {
-        "link_recall": 0.859316,
-        "link_recall_pct": "85.93%",
-        "entity_recall": 0.859316,
-        "entity_recall_pct": "85.93%",
+        "link_recall": 0.91635,
+        "link_recall_pct": "91.63%",
+        "entity_recall": 0.91635,
+        "entity_recall_pct": "91.63%",
         "entities": 263,
         "true_links": 263,
-        "recovered_links": 226
+        "recovered_links": 241
       },
       "2": {
-        "link_recall": 0.887136,
-        "link_recall_pct": "88.71%",
-        "entity_recall": 0.815534,
-        "entity_recall_pct": "81.55%",
+        "link_recall": 0.933859,
+        "link_recall_pct": "93.39%",
+        "entity_recall": 0.879854,
+        "entity_recall_pct": "87.99%",
         "entities": 824,
         "true_links": 1648,
-        "recovered_links": 1462
+        "recovered_links": 1539
       },
       "3": {
-        "link_recall": 0.908036,
-        "link_recall_pct": "90.80%",
-        "entity_recall": 0.808616,
-        "entity_recall_pct": "80.86%",
+        "link_recall": 0.932063,
+        "link_recall_pct": "93.21%",
+        "entity_recall": 0.84507,
+        "entity_recall_pct": "84.51%",
         "entities": 1207,
         "true_links": 3621,
-        "recovered_links": 3288
+        "recovered_links": 3375
       },
       "4+": {
-        "link_recall": 0.908115,
-        "link_recall_pct": "90.81%",
-        "entity_recall": 0.755896,
-        "entity_recall_pct": "75.59%",
+        "link_recall": 0.937109,
+        "link_recall_pct": "93.71%",
+        "entity_recall": 0.793546,
+        "entity_recall_pct": "79.35%",
         "entities": 2417,
         "true_links": 11830,
-        "recovered_links": 10743
+        "recovered_links": 11086
       }
     },
     "150": {
       "1": {
-        "link_recall": 0.863118,
-        "link_recall_pct": "86.31%",
-        "entity_recall": 0.863118,
-        "entity_recall_pct": "86.31%",
+        "link_recall": 0.91635,
+        "link_recall_pct": "91.63%",
+        "entity_recall": 0.91635,
+        "entity_recall_pct": "91.63%",
         "entities": 263,
         "true_links": 263,
-        "recovered_links": 227
+        "recovered_links": 241
       },
       "2": {
-        "link_recall": 0.894417,
-        "link_recall_pct": "89.44%",
-        "entity_recall": 0.824029,
-        "entity_recall_pct": "82.40%",
+        "link_recall": 0.936286,
+        "link_recall_pct": "93.63%",
+        "entity_recall": 0.883495,
+        "entity_recall_pct": "88.35%",
         "entities": 824,
         "true_links": 1648,
-        "recovered_links": 1474
+        "recovered_links": 1543
       },
       "3": {
-        "link_recall": 0.911627,
-        "link_recall_pct": "91.16%",
-        "entity_recall": 0.816073,
-        "entity_recall_pct": "81.61%",
+        "link_recall": 0.93372,
+        "link_recall_pct": "93.37%",
+        "entity_recall": 0.850041,
+        "entity_recall_pct": "85.00%",
         "entities": 1207,
         "true_links": 3621,
-        "recovered_links": 3301
+        "recovered_links": 3381
       },
       "4+": {
-        "link_recall": 0.911834,
-        "link_recall_pct": "91.18%",
-        "entity_recall": 0.762929,
-        "entity_recall_pct": "76.29%",
+        "link_recall": 0.939053,
+        "link_recall_pct": "93.91%",
+        "entity_recall": 0.80182,
+        "entity_recall_pct": "80.18%",
         "entities": 2417,
         "true_links": 11830,
-        "recovered_links": 10787
+        "recovered_links": 11109
       }
     }
   }

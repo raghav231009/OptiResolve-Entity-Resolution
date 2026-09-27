@@ -224,13 +224,7 @@ def run_blocking_benchmark(
         logger.info(f"\n--- Evaluating Candidate Cap K={k} ---")
         blocker.max_candidates = k
         blocker.max_candidates_per_entity = k
-        blocker.retrieval_stats = {
-            "total_queries": 0,
-            "total_candidates_before_cap": 0,
-            "total_candidates_after_cap": 0,
-            "max_candidates_before_cap": 0,
-            "max_candidates_after_cap": 0,
-        }
+        blocker.reset_retrieval_stats()
 
         recovered_links = 0
         entities_with_complete_recall = 0

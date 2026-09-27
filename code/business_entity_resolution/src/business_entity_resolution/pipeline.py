@@ -273,6 +273,8 @@ class EntityResolutionPipeline:
             min_token_len=self.config.blocking.min_token_len,
             name_prefix_len=self.config.blocking.name_prefix_len,
             max_block_size=self.config.blocking.max_block_size,
+            sub_block_threshold=self.config.blocking.sub_block_threshold,
+            capping_strategy=self.config.blocking.capping_strategy,
         )
         self.model = EntityResolutionModel(self.config.model)
         self.optimal_threshold = self.config.default_threshold
@@ -540,6 +542,7 @@ class EntityResolutionPipeline:
             name_prefix_len=self.config.blocking.name_prefix_len,
             max_block_size=self.config.blocking.max_block_size,
             sub_block_threshold=self.config.blocking.sub_block_threshold,
+            capping_strategy=self.config.blocking.capping_strategy,
         )
         train_blocker.index_targets(train_targets)
         train_blocker.prune_large_blocks()
@@ -551,6 +554,7 @@ class EntityResolutionPipeline:
             name_prefix_len=self.config.blocking.name_prefix_len,
             max_block_size=self.config.blocking.max_block_size,
             sub_block_threshold=self.config.blocking.sub_block_threshold,
+            capping_strategy=self.config.blocking.capping_strategy,
         )
         val_blocker.index_targets(val_targets)
         val_blocker.prune_large_blocks()
@@ -802,6 +806,7 @@ class EntityResolutionPipeline:
                 name_prefix_len=self.config.blocking.name_prefix_len,
                 max_block_size=self.config.blocking.max_block_size,
                 sub_block_threshold=self.config.blocking.sub_block_threshold,
+                capping_strategy=self.config.blocking.capping_strategy,
             )
             blocker.index_targets(country_targets)
             blocker.prune_large_blocks()

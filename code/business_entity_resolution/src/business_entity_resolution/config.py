@@ -112,6 +112,7 @@ class BlockingConfig:
     name_prefix_len: int = 4
     max_block_size: int = 350
     sub_block_threshold: int = 350  # Apply secondary sub-blocking instead of hard deletion
+    capping_strategy: str = "tiered"  # Options: "tiered", "current", "arbitrary"
 
 
 @dataclass

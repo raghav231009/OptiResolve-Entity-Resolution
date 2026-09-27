@@ -11,6 +11,13 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import numpy as np
 import rapidfuzz.fuzz as fuzz
 
+from .normalization import (
+    clean_business_name,
+    extract_building_number,
+    extract_postal_code,
+    normalize_address,
+)
+
 logger = logging.getLogger(__name__)
 
 STOPWORDS = {"the", "and", "dr", "all", "new", "mr", "mrs", "miss", "les", "des", "une"}
@@ -31,6 +38,7 @@ class MultiIndexBlocker:
         max_block_size: int = 350,
         sub_block_threshold: Optional[int] = None,
         max_candidates_per_entity: Optional[int] = None,
+        capping_strategy: str = "tiered",
     ):
         if max_candidates_per_entity is not None:
             max_candidates = max_candidates_per_entity
@@ -40,6 +48,7 @@ class MultiIndexBlocker:
         self.name_prefix_len = name_prefix_len
         self.max_block_size = max_block_size
         self.sub_block_threshold = sub_block_threshold if sub_block_threshold is not None else max_block_size
+        self.capping_strategy = capping_strategy
 
         # Inverted index tables: {country: {key: [entity_id, ...]}}
         # 1. Name token blocking
@@ -59,8 +68,8 @@ class MultiIndexBlocker:
         self.idx_sub_blocks: Dict[str, Dict[str, List[str]]] = defaultdict(lambda: defaultdict(list))
         self.oversized_keys: Dict[str, Set[str]] = defaultdict(set)
 
-        # Fast lookup store for multi-signal pre-ranking: id -> (root_name, clean_address, postal, bldg_num)
-        self.target_store: Dict[str, Tuple[str, str, str, str]] = {}
+        # Fast lookup store for multi-signal pre-ranking: id -> (root_name, clean_name, clean_address, postal, bldg_num)
+        self.target_store: Dict[str, Tuple[str, str, str, str, str]] = {}
 
         # Statistics tracking
         self.last_block_statistics: Dict[str, Any] = {}
@@ -70,6 +79,10 @@ class MultiIndexBlocker:
             "total_candidates_after_cap": 0,
             "max_candidates_before_cap": 0,
             "max_candidates_after_cap": 0,
+            "capping_events": 0,
+            "tier1_retained": 0,
+            "tier2_retained": 0,
+            "tier1_overflow_events": 0,
         }
 
     def extract_keys(
@@ -92,6 +105,16 @@ class MultiIndexBlocker:
         clean_addr = record.get("clean_address", "")
         postal = record.get("postal_code", "")
         bldg_num = record.get("building_number", "")
+
+        # Consistent normalization fallback
+        if not root_name and "business_name" in record:
+            _, root_name = clean_business_name(str(record.get("business_name", "")))
+        if not clean_addr and "business_address" in record:
+            clean_addr = normalize_address(str(record.get("business_address", "")))
+        if not postal and "business_address" in record:
+            postal = extract_postal_code(str(record.get("business_address", "")))
+        if not bldg_num and clean_addr:
+            bldg_num = extract_building_number(clean_addr, postal)
 
         # Channel 1: Significant Name Tokens
         name_words = [tok for tok in root_name.split() if len(tok) >= self.min_token_len and tok not in STOPWORDS]
@@ -131,14 +154,27 @@ class MultiIndexBlocker:
     def index_targets(self, records: List[dict]):
         """Build inverted index from Source 2 and Source 3 target records across all 6 channels."""
         for rec in records:
-            eid = rec["entity_id"]
-            country = rec["country"].strip().upper()
-            root_name = rec["root_name"]
-            clean_addr = rec["clean_address"]
+            eid = str(rec["entity_id"]).strip()
+            country = str(rec.get("country", "")).strip().upper()
+            root_name = rec.get("root_name", "")
+            clean_name = rec.get("clean_name", "")
+            clean_addr = rec.get("clean_address", "")
             postal = rec.get("postal_code", "")
             bldg_num = rec.get("building_number", "")
 
-            self.target_store[eid] = (root_name, clean_addr, postal, bldg_num)
+            # Ensure normalized fields are populated consistently
+            if not root_name and "business_name" in rec:
+                clean_name, root_name = clean_business_name(str(rec.get("business_name", "")))
+            elif not clean_name and root_name:
+                clean_name = root_name
+            if not clean_addr and "business_address" in rec:
+                clean_addr = normalize_address(str(rec.get("business_address", "")))
+            if not postal and "business_address" in rec:
+                postal = extract_postal_code(str(rec.get("business_address", "")))
+            if not bldg_num and clean_addr:
+                bldg_num = extract_building_number(clean_addr, postal)
+
+            self.target_store[eid] = (root_name, clean_name, clean_addr, postal, bldg_num)
 
             name_tokens, prefixes, postals, addr_anchors, two_words, street_anchors, geo_q, name_q = self.extract_keys(rec)
 
@@ -233,13 +269,27 @@ class MultiIndexBlocker:
 
         self.log_block_statistics(logger)
 
+    def reset_retrieval_stats(self):
+        """Reset cumulative candidate retrieval and capping counters."""
+        self.retrieval_stats = {
+            "total_queries": 0,
+            "total_candidates_before_cap": 0,
+            "total_candidates_after_cap": 0,
+            "max_candidates_before_cap": 0,
+            "max_candidates_after_cap": 0,
+            "capping_events": 0,
+            "tier1_retained": 0,
+            "tier2_retained": 0,
+            "tier1_overflow_events": 0,
+        }
+
     def _update_retrieval_stats(self, before_cap: int, after_cap: int):
-        self.retrieval_stats["total_queries"] += 1
-        self.retrieval_stats["total_candidates_before_cap"] += before_cap
-        self.retrieval_stats["total_candidates_after_cap"] += after_cap
-        if before_cap > self.retrieval_stats["max_candidates_before_cap"]:
+        self.retrieval_stats["total_queries"] = self.retrieval_stats.get("total_queries", 0) + 1
+        self.retrieval_stats["total_candidates_before_cap"] = self.retrieval_stats.get("total_candidates_before_cap", 0) + before_cap
+        self.retrieval_stats["total_candidates_after_cap"] = self.retrieval_stats.get("total_candidates_after_cap", 0) + after_cap
+        if before_cap > self.retrieval_stats.get("max_candidates_before_cap", 0):
             self.retrieval_stats["max_candidates_before_cap"] = before_cap
-        if after_cap > self.retrieval_stats["max_candidates_after_cap"]:
+        if after_cap > self.retrieval_stats.get("max_candidates_after_cap", 0):
             self.retrieval_stats["max_candidates_after_cap"] = after_cap
 
     def retrieve_candidates_with_uncapped(self, s1_rec: dict) -> Tuple[List[str], Set[str]]:
@@ -290,46 +340,156 @@ class MultiIndexBlocker:
 
         if len(cand_set) <= self.max_candidates:
             self._update_retrieval_stats(candidates_before_cap, len(cand_set))
-            return list(cand_set), raw_candidates_uncapped
+            return sorted(cand_set), raw_candidates_uncapped
+
+        self.retrieval_stats["capping_events"] = self.retrieval_stats.get("capping_events", 0) + 1
 
         # Multi-Signal Similarity Pre-Ranking with Priority Tier Retention:
-        s1_name = s1_rec["root_name"]
-        s1_addr = s1_rec["clean_address"]
+        s1_root = s1_rec.get("root_name", "")
+        s1_clean = s1_rec.get("clean_name", "")
+        s1_addr = s1_rec.get("clean_address", "")
         s1_post = s1_rec.get("postal_code", "")
         s1_bldg = s1_rec.get("building_number", "")
 
-        tier1_guaranteed: List[str] = []
-        tier2_scored: List[Tuple[float, str]] = []
+        # Fallback to runtime normalization if pre-computed fields are missing
+        if not s1_root and "business_name" in s1_rec:
+            s1_clean, s1_root = clean_business_name(str(s1_rec.get("business_name", "")))
+        elif not s1_clean and s1_root:
+            s1_clean = s1_root
+        if not s1_addr and "business_address" in s1_rec:
+            s1_addr = normalize_address(str(s1_rec.get("business_address", "")))
+        if not s1_post and "business_address" in s1_rec:
+            s1_post = extract_postal_code(str(s1_rec.get("business_address", "")))
+        if not s1_bldg and s1_addr:
+            s1_bldg = extract_building_number(s1_addr, s1_post)
 
-        for cid in cand_set:
-            c_name, c_addr, c_post, c_bldg = self.target_store.get(cid, ("", "", "", ""))
+        if self.capping_strategy == "arbitrary":
+            retained = sorted(cand_set)[: self.max_candidates]
+            self._update_retrieval_stats(candidates_before_cap, len(retained))
+            return retained, raw_candidates_uncapped
 
-            # Priority Tier 1: Exact root name match or exact physical building + postal match
-            has_exact_name = bool(s1_name and s1_name == c_name)
-            has_exact_physical = bool(s1_bldg and c_bldg and s1_bldg == c_bldg and s1_post and c_post and s1_post == c_post)
+        elif self.capping_strategy == "current":
+            tier1_guaranteed: List[str] = []
+            tier2_scored: List[Tuple[float, str]] = []
 
-            if has_exact_name or has_exact_physical:
-                tier1_guaranteed.append(cid)
-                continue
+            for cid in sorted(cand_set):
+                target_tuple = self.target_store.get(cid)
+                if target_tuple:
+                    c_root, _, c_addr, c_post, c_bldg = target_tuple
+                else:
+                    c_root, c_addr, c_post, c_bldg = "", "", "", ""
 
-            # Priority Tier 2: Composite scoring
-            name_set_score = fuzz.token_set_ratio(s1_name, c_name)
-            name_q_score = fuzz.QRatio(s1_name, c_name)
-            addr_score = fuzz.token_set_ratio(s1_addr, c_addr) if (s1_addr and c_addr) else 0.0
-            postal_bonus = 20.0 if (s1_post and c_post and s1_post == c_post) else 0.0
-            bldg_bonus = 15.0 if (s1_bldg and c_bldg and s1_bldg == c_bldg) else 0.0
+                has_exact_name = bool(s1_root and s1_root == c_root)
+                has_exact_physical = bool(s1_bldg and c_bldg and s1_bldg == c_bldg and s1_post and c_post and s1_post == c_post)
 
-            composite_rank_score = (name_set_score * 0.40) + (name_q_score * 0.20) + (addr_score * 0.20) + postal_bonus + bldg_bonus
-            tier2_scored.append((composite_rank_score, cid))
+                if has_exact_name or has_exact_physical:
+                    tier1_guaranteed.append(cid)
+                    continue
 
-        # Always preserve Tier 1 guaranteed candidates
-        remaining_slots = max(0, self.max_candidates - len(tier1_guaranteed))
-        tier2_scored.sort(key=lambda x: x[0], reverse=True)
-        retained = tier1_guaranteed + [cid for _, cid in tier2_scored[:remaining_slots]]
-        candidates_after_cap = min(len(retained), self.max_candidates)
+                name_set_score = fuzz.token_set_ratio(s1_root, c_root)
+                name_q_score = fuzz.QRatio(s1_root, c_root)
+                addr_score = fuzz.token_set_ratio(s1_addr, c_addr) if (s1_addr and c_addr) else 0.0
+                postal_bonus = 20.0 if (s1_post and c_post and s1_post == c_post) else 0.0
+                bldg_bonus = 15.0 if (s1_bldg and c_bldg and s1_bldg == c_bldg) else 0.0
 
-        self._update_retrieval_stats(candidates_before_cap, candidates_after_cap)
-        return retained[: self.max_candidates], raw_candidates_uncapped
+                composite_rank_score = (name_set_score * 0.40) + (name_q_score * 0.20) + (addr_score * 0.20) + postal_bonus + bldg_bonus
+                tier2_scored.append((composite_rank_score, cid))
+
+            remaining_slots = max(0, self.max_candidates - len(tier1_guaranteed))
+            tier2_scored.sort(key=lambda x: (-x[0], x[1]))
+            retained = tier1_guaranteed + [cid for _, cid in tier2_scored[:remaining_slots]]
+            retained = retained[: self.max_candidates]
+            self._update_retrieval_stats(candidates_before_cap, len(retained))
+            return retained, raw_candidates_uncapped
+
+        else:  # "tiered" (audited production policy)
+            tier1_scored: List[Tuple[float, str]] = []
+            tier2_scored: List[Tuple[float, str]] = []
+
+            for cid in sorted(cand_set):
+                target_tuple = self.target_store.get(cid)
+                if target_tuple:
+                    c_root, c_clean, c_addr, c_post, c_bldg = target_tuple
+                else:
+                    c_root, c_clean, c_addr, c_post, c_bldg = "", "", "", "", ""
+
+                # Tier 1 Qualification:
+                # 1. Exact Name Anchor (root name or full clean business name)
+                has_exact_root = bool(s1_root and c_root and s1_root == c_root)
+                has_exact_clean = bool(s1_clean and c_clean and s1_clean == c_clean)
+                has_exact_name = has_exact_root or has_exact_clean
+
+                # 2. Exact Physical Anchor where appropriate
+                has_bldg_postal = bool(s1_bldg and c_bldg and s1_bldg == c_bldg and s1_post and c_post and s1_post == c_post)
+                addr_token_set = fuzz.token_set_ratio(s1_addr, c_addr) if (s1_addr and c_addr) else 0.0
+                has_bldg_street = bool(s1_bldg and c_bldg and s1_bldg == c_bldg and addr_token_set >= 80.0)
+                has_postal_street = bool(s1_post and c_post and s1_post == c_post and addr_token_set >= 90.0)
+                has_exact_physical = has_bldg_postal or has_bldg_street or has_postal_street
+
+                if has_exact_name or has_exact_physical:
+                    # Deterministic Tier 1 priority score
+                    tier1_score = 0.0
+                    if has_exact_name and has_exact_physical:
+                        tier1_score += 2000.0  # Dual anchor match
+                    elif has_exact_name:
+                        tier1_score += 1000.0
+                    else:
+                        tier1_score += 1000.0  # Physical anchor match
+
+                    name_token_set = fuzz.token_set_ratio(s1_root, c_root)
+                    tier1_score += (addr_token_set * 0.50) + (name_token_set * 0.50)
+                    if s1_post and c_post and s1_post == c_post:
+                        tier1_score += 30.0
+                    if s1_bldg and c_bldg and s1_bldg == c_bldg:
+                        tier1_score += 30.0
+                    if has_exact_clean:
+                        tier1_score += 40.0
+
+                    tier1_scored.append((tier1_score, cid))
+                else:
+                    # Tier 2: Remaining candidates scored with balanced name & address signals
+                    name_token_set = fuzz.token_set_ratio(s1_root, c_root)
+                    name_q = fuzz.QRatio(s1_root, c_root)
+                    name_sim = (name_token_set * 0.60) + (name_q * 0.40)
+
+                    addr_q = fuzz.QRatio(s1_addr, c_addr) if (s1_addr and c_addr) else 0.0
+                    addr_sim = (addr_token_set * 0.70) + (addr_q * 0.30) if (s1_addr and c_addr) else 0.0
+
+                    # Balanced base score: guarantees high address match is never displaced
+                    # by superficial name distractors
+                    base_score = (max(name_sim, addr_sim) * 0.60) + (min(name_sim, addr_sim) * 0.40)
+
+                    bonus = 0.0
+                    if s1_post and c_post and s1_post == c_post:
+                        bonus += 25.0
+                    if s1_bldg and c_bldg and s1_bldg == c_bldg:
+                        bonus += 20.0
+                    if addr_token_set >= 80.0:
+                        bonus += 15.0
+
+                    tier2_score = base_score + bonus
+                    tier2_scored.append((tier2_score, cid))
+
+            # Deterministic ordering: higher score first, tie-break by cid ascending
+            tier1_scored.sort(key=lambda x: (-x[0], x[1]))
+            tier2_scored.sort(key=lambda x: (-x[0], x[1]))
+
+            # Requirement 1 & 2: Tier 1 candidates are guaranteed to survive up to K.
+            # If Tier 1 exceeds K, deterministic policy retains top K Tier 1 candidates.
+            if len(tier1_scored) >= self.max_candidates:
+                retained = [cid for _, cid in tier1_scored[: self.max_candidates]]
+                self.retrieval_stats["tier1_overflow_events"] = self.retrieval_stats.get("tier1_overflow_events", 0) + 1
+                self.retrieval_stats["tier1_retained"] = self.retrieval_stats.get("tier1_retained", 0) + len(retained)
+            else:
+                retained = [cid for _, cid in tier1_scored]
+                self.retrieval_stats["tier1_retained"] = self.retrieval_stats.get("tier1_retained", 0) + len(retained)
+                remaining_slots = self.max_candidates - len(retained)
+                tier2_to_add = [cid for _, cid in tier2_scored[:remaining_slots]]
+                retained.extend(tier2_to_add)
+                self.retrieval_stats["tier2_retained"] = self.retrieval_stats.get("tier2_retained", 0) + len(tier2_to_add)
+
+            self._update_retrieval_stats(candidates_before_cap, len(retained))
+            return retained, raw_candidates_uncapped
 
     def retrieve_candidates(self, s1_rec: dict) -> List[str]:
         """
@@ -356,6 +516,11 @@ class MultiIndexBlocker:
             "avg_candidates_after_cap": round(after / queries, 2) if queries > 0 else 0.0,
             "max_candidates_before_cap": self.retrieval_stats["max_candidates_before_cap"],
             "max_candidates_after_cap": self.retrieval_stats["max_candidates_after_cap"],
+            "capping_events": self.retrieval_stats.get("capping_events", 0),
+            "tier1_retained": self.retrieval_stats.get("tier1_retained", 0),
+            "tier2_retained": self.retrieval_stats.get("tier2_retained", 0),
+            "tier1_overflow_events": self.retrieval_stats.get("tier1_overflow_events", 0),
+            "capping_strategy": self.capping_strategy,
         }
 
     def log_block_statistics(self, custom_logger: Optional[logging.Logger] = None):
@@ -396,5 +561,10 @@ class MultiIndexBlocker:
         target_logger.info(f"  Average Candidates After Cap:      {stats.get('avg_candidates_after_cap', 0.0):.2f}")
         target_logger.info(f"  Max Candidates Before Cap:         {stats.get('max_candidates_before_cap', 0):,}")
         target_logger.info(f"  Max Candidates After Cap:          {stats.get('max_candidates_after_cap', 0):,}")
+        target_logger.info(f"  Queries Requiring Capping:         {stats.get('capping_events', 0):,}")
+        target_logger.info(f"  Tier 1 Guaranteed Retained:        {stats.get('tier1_retained', 0):,}")
+        target_logger.info(f"  Tier 2 Scored Retained:            {stats.get('tier2_retained', 0):,}")
+        target_logger.info(f"  Tier 1 Overflows (Deterministic):  {stats.get('tier1_overflow_events', 0):,}")
         target_logger.info(f"  Configured Cap:                    {self.max_candidates}")
+        target_logger.info(f"  Capping Strategy:                  {self.capping_strategy}")
         target_logger.info("============================================================")
