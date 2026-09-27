@@ -6,14 +6,28 @@ and streamed inference for test sets.
 
 from datetime import datetime, timezone
 import gc
+import hashlib
 import json
 import logging
 from pathlib import Path
 import re
+import time
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+
+
+def compute_file_hash(path: Path, max_bytes: int = 50 * 1024 * 1024) -> str:
+    """Compute sha256 hash of a file (up to max_bytes for speed)."""
+    h = hashlib.sha256()
+    try:
+        with open(path, "rb") as f:
+            chunk = f.read(max_bytes)
+            h.update(chunk)
+        return h.hexdigest()
+    except Exception:
+        return ""
 
 from .blocking import MultiIndexBlocker
 from .config import PipelineConfig
@@ -561,11 +575,18 @@ class EntityResolutionPipeline:
             return X, y, stats
         return X, y
 
-    def fit(self):
-        """Train pipeline with strict holdout validation and early stopping."""
-        logger.info("Starting Pipeline Training Phase...")
+    def fit_dev(self) -> Dict[str, Any]:
+        """
+        Phase A: Development Training Phase.
+        Train pipeline with strict holdout validation, early stopping, and threshold tuning.
+        Exports model, optimal_threshold.json, training_results.json, and dev_training_metadata.json.
+        """
+        logger.info("Starting Phase A: Development Training & Validation...")
 
-        # 1. Inspect total available S1 rows in train_source1
+        # 1. Validate training datasets exist
+        self.config.paths.validate_train_dataset_exists()
+
+        # 2. Inspect total available S1 rows in train_source1
         total_available_s1 = count_file_lines(self.config.paths.train_source1) - 1
 
         is_production_full = self.config.is_production and self.config.train_s1_limit is None
@@ -578,21 +599,20 @@ class EntityResolutionPipeline:
         s1_selected = len(train_s1)
         coverage_pct = (s1_selected / total_available_s1 * 100.0) if total_available_s1 > 0 else 0.0
 
-        # Requirement 6: Assert that final production training uses 100% of available train_source1 rows
+        # Requirement: In production full mode, verify 100% of S1 rows
         if is_production_full:
             assert s1_selected == total_available_s1, (
-                f"Production training assertion failed: final training must use 100% of available "
+                f"Production training assertion failed: training must use 100% of available "
                 f"train_source1 rows! Selected {s1_selected:,} of {total_available_s1:,} ({coverage_pct:.2f}%)."
             )
         elif self.config.is_production and self.config.train_s1_limit is not None:
             logger.warning(
-                f"Production training limit explicitly overridden by user: {s1_selected:,} / {total_available_s1:,} ({coverage_pct:.2f}%)"
+                f"Training limit explicitly overridden by user: {s1_selected:,} / {total_available_s1:,} ({coverage_pct:.2f}%)"
             )
 
         all_s1_ids = {r["entity_id"] for r in train_s1}
 
-        # 2. Load Ground Truth and verify S1 ID completeness
-        # Requirement 7 & 8: Verify all ground-truth S1 IDs exist; fail with clear diagnostic if missing
+        # 3. Load Ground Truth and verify S1 ID completeness
         verify_ids = all_s1_ids if is_production_full else None
         gt = load_ground_truth(
             self.config.paths.train_ground_truth,
@@ -612,9 +632,8 @@ class EntityResolutionPipeline:
             f"({'strictly 1:1' if cardinality_stats['is_strictly_one_to_one'] else 'supports 1:N mapping'})."
         )
 
-        # Requirement 5: Explicitly log coverage metrics
         logger.info("============================================================")
-        logger.info("TRAINING DATASET COVERAGE AUDIT:")
+        logger.info("DEVELOPMENT DATASET COVERAGE AUDIT:")
         logger.info(f"  Training Mode:                 {self.config.training_mode.upper()}")
         logger.info(f"  Total S1 Rows Available:       {total_available_s1:,}")
         logger.info(f"  S1 Rows Selected:              {s1_selected:,}")
@@ -623,11 +642,10 @@ class EntityResolutionPipeline:
         logger.info(f"  Total Positive Links:          {positive_links:,}")
         logger.info("============================================================")
 
-        # 3. SPLIT S1 FIRST into train and holdout validation sets (Prevents Validation Leakage)
+        # 4. SPLIT S1 into train and holdout validation sets (Prevents Validation Leakage)
         all_s1_list = list(train_s1)
         np.random.seed(self.config.random_seed)
 
-        # Requirement 8: Ensure singleton entities are represented in both training and validation
         singleton_s1 = [r for r in all_s1_list if len(gt.get(r["entity_id"], set())) == 0]
         matched_s1 = [r for r in all_s1_list if len(gt.get(r["entity_id"], set())) > 0]
         np.random.shuffle(singleton_s1)
@@ -676,7 +694,7 @@ class EntityResolutionPipeline:
 
         logger.info(f"Independent target ID extraction: {len(fit_needed_ids):,} train targets, {len(val_needed_ids):,} val targets.")
 
-        # 4 & 5. Build Separate, Leakage-Free Target Pools for Train and Validation
+        # 5. Build Separate, Leakage-Free Target Pools for Train and Validation
         logger.info("Loading isolated training and validation target pools...")
         train_targets, val_targets = load_isolated_target_pools(
             [self.config.paths.train_source2, self.config.paths.train_source3],
@@ -692,7 +710,6 @@ class EntityResolutionPipeline:
         val_target_ids = {r["entity_id"] for r in val_targets}
         intersection = train_target_ids.intersection(val_target_ids)
 
-        # Requirement 9: Log train target IDs, validation target IDs, intersection size
         logger.info("============================================================")
         logger.info("TARGET-LEVEL VALIDATION LEAKAGE AUDIT:")
         logger.info(f"  Training Target IDs:         {len(train_target_ids):,}")
@@ -702,7 +719,6 @@ class EntityResolutionPipeline:
         logger.info(f"  Max S1 Entities per Target:  {cardinality_stats['max_s1_per_target']}")
         logger.info("============================================================")
 
-        # Requirement 10: Assert the intended separation
         assert len(intersection) == 0, (
             f"Target-level validation leakage detected! {len(intersection):,} targets overlap "
             f"between train and validation pools: {list(intersection)[:5]}"
@@ -757,7 +773,6 @@ class EntityResolutionPipeline:
         val_pos = int(val_stats["total_positives"])
         val_neg = int(val_stats["total_negatives"])
 
-        # Requirement 7: Explicitly log negative sampling and class balance metrics
         logger.info("============================================================")
         logger.info("NEGATIVE SAMPLING & CLASS BALANCE REPORT:")
         logger.info("  Training Set:")
@@ -797,7 +812,6 @@ class EntityResolutionPipeline:
         logger.info(f"  Validation Binary Logloss:   {val_logloss if val_logloss is not None else 'N/A'}")
         logger.info("============================================================")
 
-        # Requirement 6: Verify the model actually stopped at best_iteration_
         if len(X_val) > 0 and best_iter is not None:
             assert best_iter > 0, "Model best_iteration_ must be a positive integer"
             assert best_iter <= self.config.model.n_estimators, (
@@ -814,6 +828,7 @@ class EntityResolutionPipeline:
         logger.info(f"Top 6 Discriminative Features: {list(importances.items())[:6]}")
 
         # Save model
+        self.config.paths.model_path.parent.mkdir(parents=True, exist_ok=True)
         self.model.save(self.config.paths.model_path)
         logger.info(f"Model serialized to {self.config.paths.model_path}")
 
@@ -869,7 +884,7 @@ class EntityResolutionPipeline:
             f"singleton_false_positives = {best_singleton_fp} (Saved to {thresh_path})"
         )
 
-        # Persist comprehensive training results for reproducibility (Issue #15)
+        # Persist comprehensive training results for reproducibility
         results_path = self.config.paths.artifacts_dir / "training_results.json"
         training_results = {
             "validation_macro_f05": float(best_score),
@@ -934,12 +949,293 @@ class EntityResolutionPipeline:
             json.dump(training_results, f, indent=2)
         logger.info(f"Training results persisted to {results_path}")
 
+        # Persist dev_training_metadata.json
+        dev_meta_path = self.config.paths.artifacts_dir / "dev_training_metadata.json"
+        with open(dev_meta_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "training_mode": "dev-train",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "best_iteration": int(best_iter if best_iter is not None else self.config.model.n_estimators),
+                "optimal_threshold": float(best_tau),
+                "validation_macro_f05": float(best_score),
+                "train_pair_count": int(len(X_train)),
+                "val_pair_count": int(len(X_val)),
+                "train_positives": train_pos,
+                "train_negatives": train_neg,
+                "feature_count": int(X_train.shape[1]),
+                "candidate_cap_k": self.config.blocking.max_candidates_per_entity,
+            }, f, indent=2)
+        logger.info(f"Dev training metadata persisted to {dev_meta_path}")
+
+        return training_results
+
+    def fit_final(
+        self,
+        selected_n_estimators: Optional[int] = None,
+        locked_threshold: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """
+        Phase B: Final Model Training on 100% of Labeled Data.
+
+        Workflow:
+        1. Uses 100% of available train_source1 rows (zero holdout).
+        2. Loads all required positive S2/S3 targets with strict verification.
+        3. Mines hard negatives using final production blocker.
+        4. Trains final LightGBM model using selected number of estimators determined from development.
+        5. Does NOT use the test set for tuning.
+        6. Locks the threshold selected from development validation.
+        7. Saves metadata indicating training mode, S1 records, positive/negative pairs,
+           feature count, blocking configuration, estimators, locked threshold, duration, data hashes.
+        """
+        start_time = time.time()
+        logger.info("============================================================")
+        logger.info("STARTING PHASE B: FINAL PRODUCTION MODEL TRAINING")
+        logger.info("============================================================")
+
+        # 1. Validate dataset paths exist
+        self.config.paths.validate_train_dataset_exists()
+
+        # 2. Inspect total available S1 rows in train_source1
+        total_available_s1 = count_file_lines(self.config.paths.train_source1) - 1
+        is_production_full = self.config.train_s1_limit is None
+        effective_limit = None if is_production_full else self.config.train_s1_limit
+
+        train_s1 = load_and_preprocess_file(
+            self.config.paths.train_source1,
+            nrows=effective_limit,
+        )
+        s1_selected = len(train_s1)
+        coverage_pct = (s1_selected / total_available_s1 * 100.0) if total_available_s1 > 0 else 0.0
+
+        if is_production_full:
+            assert s1_selected == total_available_s1, (
+                f"Final training assertion failed: must use 100% of available train_source1 rows! "
+                f"Selected {s1_selected:,} of {total_available_s1:,} ({coverage_pct:.2f}%)."
+            )
+        else:
+            logger.warning(
+                f"Final training limit explicitly overridden: {s1_selected:,} / {total_available_s1:,} ({coverage_pct:.2f}%)"
+            )
+
+        all_s1_ids = {r["entity_id"] for r in train_s1}
+
+        # 3. Load Ground Truth for 100% of training entities
+        verify_ids = all_s1_ids if is_production_full else None
+        gt = load_ground_truth(
+            self.config.paths.train_ground_truth,
+            s1_ids_filter=all_s1_ids,
+            verify_all_s1_present=verify_ids,
+        )
+
+        all_needed_target_ids = set()
+        for matches in gt.values():
+            all_needed_target_ids.update(matches)
+
+        logger.info(
+            f"Ground Truth loaded: {len(all_s1_ids):,} S1 entities, "
+            f"{len(all_needed_target_ids):,} required positive target entities."
+        )
+
+        # 4. Load all required positive targets + background distractors using load_targeted_training_targets
+        logger.info("Loading complete target pool for final training...")
+        targets = load_targeted_training_targets(
+            source_paths=[self.config.paths.train_source2, self.config.paths.train_source3],
+            needed_ids=all_needed_target_ids,
+            background_sample_per_file=150000,
+            allow_missing_targets=self.config.allow_missing_targets,
+            diagnostic_dir=self.config.paths.artifacts_dir,
+        )
+        target_map = {r["entity_id"]: r for r in targets}
+
+        # 5. Build final production blocker
+        logger.info("Building final production blocker index...")
+        final_blocker = MultiIndexBlocker(
+            max_candidates=self.config.blocking.max_candidates_per_entity,
+            min_token_len=self.config.blocking.min_token_len,
+            name_prefix_len=self.config.blocking.name_prefix_len,
+            max_block_size=self.config.blocking.max_block_size,
+            sub_block_threshold=self.config.blocking.sub_block_threshold,
+            capping_strategy=self.config.blocking.capping_strategy,
+        )
+        final_blocker.index_targets(targets)
+        final_blocker.prune_large_blocks()
+
+        # 6. Generate final pair matrix with hard negatives on 100% of data
+        logger.info("Generating training pairs on 100% labeled data...")
+        X_train, y_train, train_stats = self._generate_pair_matrix(
+            train_s1, gt, final_blocker, target_map, desc="Building Final Train Pairs", return_stats=True
+        )
+        final_blocker.log_retrieval_statistics(logger)
+
+        train_pos = int(train_stats["total_positives"])
+        train_neg = int(train_stats["total_negatives"])
+
+        # 7. Resolve number of estimators from development phase
+        dev_best_iter = None
+        dev_meta_path = self.config.paths.artifacts_dir / "dev_training_metadata.json"
+        results_path = self.config.paths.artifacts_dir / "training_results.json"
+        for p in [dev_meta_path, results_path]:
+            if p.exists():
+                try:
+                    with open(p, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        dev_best_iter = data.get("early_stopping_best_iteration") or data.get("best_iteration")
+                        if dev_best_iter:
+                            break
+                except Exception:
+                    pass
+
+        if selected_n_estimators is not None:
+            n_est = int(selected_n_estimators)
+            n_est_source = "explicit_argument"
+        elif self.config.model.final_n_estimators is not None:
+            n_est = int(self.config.model.final_n_estimators)
+            n_est_source = "model_config_final_n_estimators"
+        elif dev_best_iter is not None:
+            n_est = int(dev_best_iter)
+            n_est_source = "dev_training_metadata_best_iteration"
+        else:
+            n_est = int(self.config.model.n_estimators)
+            n_est_source = "default_config_n_estimators"
+
+        logger.info(f"Selected estimators for final model: {n_est} (source: {n_est_source})")
+
+        # 8. Resolve locked threshold from development phase (DO NOT tune on test set!)
+        dev_threshold = None
+        thresh_path = self.config.paths.artifacts_dir / "optimal_threshold.json"
+        if thresh_path.exists():
+            try:
+                with open(thresh_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    dev_threshold = float(data.get("optimal_threshold", self.config.default_threshold))
+            except Exception:
+                pass
+
+        if locked_threshold is not None:
+            tau = float(locked_threshold)
+            tau_source = "explicit_argument"
+        elif dev_threshold is not None:
+            tau = float(dev_threshold)
+            tau_source = "optimal_threshold_json"
+        else:
+            tau = float(self.config.default_threshold)
+            tau_source = "default_config_threshold"
+
+        self.optimal_threshold = tau
+        logger.info(f"Locked threshold for inference: tau* = {tau:.3f} (source: {tau_source})")
+
+        # 9. Train final LightGBM model on 100% of data (eval_X=None, callbacks=None)
+        self.model.config.n_estimators = n_est
+        logger.info(f"Fitting final LightGBM classifier with n_estimators={n_est} on {len(X_train):,} pairs...")
+        self.model.train(X_train, y_train, X_val=None, y_val=None)
+
+        # 10. Persist final model
+        self.config.paths.model_path.parent.mkdir(parents=True, exist_ok=True)
+        self.model.save(self.config.paths.model_path)
+        logger.info(f"Final production model serialized to {self.config.paths.model_path}")
+
+        # 11. Calculate hashes and duration
+        duration = time.time() - start_time
+        data_paths = {
+            "train_source1": str(self.config.paths.train_source1),
+            "train_source2": str(self.config.paths.train_source2),
+            "train_source3": str(self.config.paths.train_source3),
+            "train_ground_truth": str(self.config.paths.train_ground_truth),
+        }
+        data_hashes = {}
+        for k, p_str in data_paths.items():
+            p = Path(p_str)
+            if p.exists():
+                data_hashes[k] = compute_file_hash(p)
+
+        # 12. Persist final training metadata
+        final_meta = {
+            "training_mode": "final-train",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "training_duration_seconds": round(duration, 2),
+            "total_s1_records": s1_selected,
+            "total_available_s1_records": total_available_s1,
+            "training_coverage_pct": round(coverage_pct, 2),
+            "total_targets_loaded": len(targets),
+            "required_positive_targets": len(all_needed_target_ids),
+            "positive_pairs": train_pos,
+            "negative_pairs": train_neg,
+            "class_balance_ratio_neg_to_pos": train_stats.get("class_balance_ratio_neg_to_pos", 0.0),
+            "feature_count": int(X_train.shape[1]),
+            "feature_names": FEATURE_NAMES,
+            "candidate_cap_k": self.config.blocking.max_candidates_per_entity,
+            "blocking_config": {
+                "max_candidates_per_entity": self.config.blocking.max_candidates_per_entity,
+                "max_block_size": self.config.blocking.max_block_size,
+                "min_token_len": self.config.blocking.min_token_len,
+                "name_prefix_len": self.config.blocking.name_prefix_len,
+                "capping_strategy": self.config.blocking.capping_strategy,
+            },
+            "selected_n_estimators": n_est,
+            "selected_n_estimators_source": n_est_source,
+            "locked_threshold": tau,
+            "locked_threshold_source": tau_source,
+            "data_paths": data_paths,
+            "data_hashes": data_hashes,
+            "negative_sampling_stats": train_stats,
+        }
+
+        final_meta_path = self.config.paths.artifacts_dir / "final_training_metadata.json"
+        with open(final_meta_path, "w", encoding="utf-8") as f:
+            json.dump(final_meta, f, indent=2)
+        logger.info(f"Final training metadata saved to {final_meta_path}")
+
+        logger.info("============================================================")
+        logger.info("PHASE B FINAL TRAINING COMPLETE:")
+        logger.info(f"  S1 Entities Trained:       {s1_selected:,} (100% full dataset)")
+        logger.info(f"  Total Pairs Trained:       {len(X_train):,}")
+        logger.info(f"  Positive Pairs:            {train_pos:,}")
+        logger.info(f"  Negative Pairs:            {train_neg:,}")
+        logger.info(f"  Selected Estimators:       {n_est}")
+        logger.info(f"  Locked Threshold:          {tau:.3f}")
+        logger.info(f"  Duration:                  {duration:.1f}s")
+        logger.info("============================================================")
+
+        return final_meta
+
+    def fit(self):
+        """Train pipeline according to configured training_mode."""
+        if self.config.training_mode == "final-train":
+            return self.fit_final()
+        return self.fit_dev()
+
+    # Explicit semantic aliases
+    dev_train = fit_dev
+    final_train = fit_final
+
     def predict_test(self, batch_size: int = 50000):
         """
         Run inference over official test set partitioned by country (France, US, India).
         Enforces candidate subset invariant and streams output TSVs with low memory footprint.
         """
         logger.info("Starting Scalable Test Prediction Phase...")
+
+        # 1. Validate test dataset exists
+        self.config.paths.validate_test_dataset_exists()
+
+        # 2. Check for locked threshold in artifacts if not explicitly tuned in this session
+        if self.config.paths.artifacts_dir.exists():
+            for p in [
+                self.config.paths.artifacts_dir / "optimal_threshold.json",
+                self.config.paths.artifacts_dir / "final_training_metadata.json",
+            ]:
+                if p.exists():
+                    try:
+                        with open(p, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            thresh = data.get("optimal_threshold") or data.get("locked_threshold")
+                            if thresh is not None:
+                                self.optimal_threshold = float(thresh)
+                                logger.info(f"Using locked threshold from {p.name}: {self.optimal_threshold:.3f}")
+                                break
+                    except Exception:
+                        pass
+
         out_matching = self.config.paths.matching_results
         out_candidates = self.config.paths.candidate_pairs
         out_matching.parent.mkdir(parents=True, exist_ok=True)

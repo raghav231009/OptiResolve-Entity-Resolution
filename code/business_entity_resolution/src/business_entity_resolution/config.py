@@ -43,6 +43,20 @@ def find_dataset_root() -> Path:
     return (PROJECT_ROOT / "dataset").resolve()
 
 
+def find_output_dir() -> Path:
+    """Dynamically discover output directory relative to project root or environment."""
+    if "OPTIRESOLVE_OUTPUT_DIR" in os.environ:
+        return Path(os.environ["OPTIRESOLVE_OUTPUT_DIR"]).resolve()
+    return (PROJECT_ROOT / "output").resolve()
+
+
+def find_artifacts_dir() -> Path:
+    """Dynamically discover artifacts directory relative to project root or environment."""
+    if "OPTIRESOLVE_ARTIFACTS_DIR" in os.environ:
+        return Path(os.environ["OPTIRESOLVE_ARTIFACTS_DIR"]).resolve()
+    return (PROJECT_ROOT / "artifacts").resolve()
+
+
 @dataclass
 class PathConfig:
     # Base dataset paths (auto-discovered)
@@ -77,7 +91,7 @@ class PathConfig:
         return self.dataset_root / "test" / "test_source3.tsv"
 
     # Project-relative output paths
-    output_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "output")
+    output_dir: Path = field(default_factory=find_output_dir)
 
     @property
     def matching_results(self) -> Path:
@@ -88,11 +102,42 @@ class PathConfig:
         return self.output_dir / "candidate_pairs.tsv"
 
     # Project-relative artifacts & model storage
-    artifacts_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "artifacts")
+    artifacts_dir: Path = field(default_factory=find_artifacts_dir)
 
     @property
     def model_path(self) -> Path:
         return self.artifacts_dir / "lightgbm_er_model.joblib"
+
+    def validate_train_dataset_exists(self) -> None:
+        """Verify required training datasets exist or raise descriptive FileNotFoundError."""
+        required = [
+            ("train_source1", self.train_source1),
+            ("train_source2", self.train_source2),
+            ("train_source3", self.train_source3),
+            ("train_ground_truth", self.train_ground_truth),
+        ]
+        for name, p in required:
+            if not p.exists():
+                raise FileNotFoundError(
+                    f"Required training dataset file '{name}' not found: {p}\n"
+                    f"Resolved DATASET_ROOT is: {self.dataset_root}\n"
+                    f"Please verify that the dataset exists or set the DATASET_ROOT environment variable."
+                )
+
+    def validate_test_dataset_exists(self) -> None:
+        """Verify required test datasets exist or raise descriptive FileNotFoundError."""
+        required = [
+            ("test_source1", self.test_source1),
+            ("test_source2", self.test_source2),
+            ("test_source3", self.test_source3),
+        ]
+        for name, p in required:
+            if not p.exists():
+                raise FileNotFoundError(
+                    f"Required test dataset file '{name}' not found: {p}\n"
+                    f"Resolved DATASET_ROOT is: {self.dataset_root}\n"
+                    f"Please verify that the dataset exists or set the DATASET_ROOT environment variable."
+                )
 
 
 def _default_max_candidates() -> int:
@@ -132,6 +177,7 @@ class ModelConfig:
     random_state: int = 42
     n_jobs: int = -1
     early_stopping_rounds: int = 30
+    final_n_estimators: Optional[int] = None
 
 
 @dataclass
@@ -141,7 +187,7 @@ class PipelineConfig:
     model: ModelConfig = field(default_factory=ModelConfig)
     random_seed: int = 42
 
-    # Training execution mode: "production" (100% full dataset), "experiment", or "development"
+    # Training execution mode: "production", "final-train", "experiment", "development", or "dev-train"
     training_mode: str = "production"
 
     # None = full scale execution (100% of available dataset used in production)
@@ -169,11 +215,19 @@ class PipelineConfig:
 
     @property
     def is_production(self) -> bool:
-        return self.training_mode == "production"
+        return self.training_mode in ("production", "final-train")
+
+    @property
+    def is_final_train(self) -> bool:
+        return self.training_mode in ("production", "final-train")
 
     @property
     def is_development(self) -> bool:
-        return self.training_mode == "development"
+        return self.training_mode in ("development", "dev-train")
+
+    @property
+    def is_dev_train(self) -> bool:
+        return self.training_mode in ("development", "dev-train", "experiment")
 
     @property
     def is_experiment(self) -> bool:
