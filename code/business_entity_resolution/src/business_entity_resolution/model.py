@@ -23,6 +23,9 @@ class EntityResolutionModel:
     def __init__(self, config: Optional[ModelConfig] = None):
         self.config = config or ModelConfig()
         self.clf: Optional[lgb.LGBMClassifier] = None
+        self.best_iteration_: Optional[int] = None
+        self.best_score_: Optional[dict] = None
+        self.validation_loss_: Optional[float] = None
 
     def train(
         self,
@@ -34,6 +37,7 @@ class EntityResolutionModel:
         """Train LightGBM binary classifier with verified early stopping."""
         self.clf = lgb.LGBMClassifier(
             objective=self.config.objective,
+            metric=self.config.metric,
             boosting_type=self.config.boosting_type,
             n_estimators=self.config.n_estimators,
             learning_rate=self.config.learning_rate,
@@ -49,9 +53,14 @@ class EntityResolutionModel:
             verbose=-1,
         )
 
-        # Build eval arguments: use new eval_X/eval_y API (eval_set deprecated in LightGBM>=4.4)
-        has_val = X_val is not None and y_val is not None
-        callbacks = [lgb.early_stopping(stopping_rounds=30, verbose=True)] if has_val else None
+        has_val = (
+            X_val is not None
+            and y_val is not None
+            and len(X_val) > 0
+            and len(y_val) > 0
+        )
+        stopping_rounds = getattr(self.config, "early_stopping_rounds", 30)
+        callbacks = [lgb.early_stopping(stopping_rounds=stopping_rounds, verbose=True)] if has_val else None
 
         self.clf.fit(
             X_train,
@@ -62,11 +71,21 @@ class EntityResolutionModel:
             callbacks=callbacks,
         )
 
-        if has_val and hasattr(self.clf, "best_iteration_"):
-            # best_score_ structure: {eval_set_name: {metric_name: score}}
-            val_scores = self.clf.best_score_ or {}
-            val_loss = val_scores.get("val", {}).get("binary_logloss", "N/A")
-            logger.info(f"Early stopping confirmed: Best iteration = {self.clf.best_iteration_} | Best validation score = {val_loss}")
+        if has_val and hasattr(self.clf, "best_iteration_") and self.clf.best_iteration_ is not None:
+            self.best_iteration_ = int(self.clf.best_iteration_)
+            self.best_score_ = self.clf.best_score_ or {}
+            val_scores = self.best_score_.get("val", {})
+            val_loss = val_scores.get("binary_logloss", None)
+            if val_loss is not None:
+                self.validation_loss_ = float(val_loss)
+            logger.info(
+                f"Early stopping confirmed: Best iteration = {self.best_iteration_} / {self.config.n_estimators} "
+                f"| Best validation binary logloss = {self.validation_loss_}"
+            )
+        else:
+            self.best_iteration_ = self.config.n_estimators
+            self.best_score_ = {}
+            self.validation_loss_ = None
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         """Return probability of positive match."""
@@ -91,3 +110,10 @@ class EntityResolutionModel:
     def load(self, filepath: Path):
         """Load persisted model artifact."""
         self.clf = joblib.load(filepath)
+        if hasattr(self.clf, "best_iteration_") and self.clf.best_iteration_ is not None:
+            self.best_iteration_ = int(self.clf.best_iteration_)
+        if hasattr(self.clf, "best_score_") and self.clf.best_score_:
+            self.best_score_ = self.clf.best_score_
+            val_loss = self.best_score_.get("val", {}).get("binary_logloss")
+            if val_loss is not None:
+                self.validation_loss_ = float(val_loss)

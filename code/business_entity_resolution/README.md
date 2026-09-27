@@ -48,6 +48,7 @@ code/business_entity_resolution/
     ├── test_blocking.py            # Candidate blocking & safety cap tests
     ├── test_blocking_extended.py   # Extended blocking: country isolation, S2/S3, determinism
     ├── test_config.py              # Path resolution & config defaults
+    ├── test_dataset_coverage.py    # Training dataset coverage, CLI profiles & integrity
     ├── test_features.py            # 23-dim feature vector, missing value semantics
     ├── test_integration.py         # End-to-end integration and smoke tests
     ├── test_metrics.py             # Metric calculation tests
@@ -55,7 +56,8 @@ code/business_entity_resolution/
     ├── test_model.py               # LightGBM training, save/load, predict
     ├── test_normalization.py       # Multilingual normalization tests
     ├── test_normalization_extended.py  # Extended: fils, postal, building number edge cases
-    └── test_smoke_e2e.py           # Full pipeline smoke test with synthetic dataset
+    ├── test_smoke_e2e.py           # Full pipeline smoke test with synthetic dataset
+    └── test_validation_early_stopping.py  # Disjointness, LightGBM early stopping, metrics logging
 ```
 
 ---

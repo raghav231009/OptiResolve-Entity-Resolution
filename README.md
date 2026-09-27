@@ -5,7 +5,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Validation Status](https://img.shields.io/badge/Validator-PASS-brightgreen.svg)]()
-[![Tests](https://img.shields.io/badge/Tests-126%2F126%20Passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-133%2F133%20Passed-brightgreen.svg)]()
 
 ---
 
@@ -116,7 +116,7 @@ pip install -e .
 pytest tests/ -v
 ```
 
-Expected: **126 passed**
+Expected: **133 passed**
 
 ### 3. Measure Blocking Recall (requires dataset)
 

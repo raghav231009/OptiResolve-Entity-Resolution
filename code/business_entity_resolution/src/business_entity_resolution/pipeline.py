@@ -8,7 +8,7 @@ import gc
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -91,11 +91,14 @@ def load_ground_truth(
         gt_s1_ids.add(s1)
         if s1_ids_filter is not None and s1 not in s1_ids_filter:
             continue
-        raw_matches = row["matched_entity_ids"]
+        col_name = "matched_entity_ids" if "matched_entity_ids" in df.columns else "ground_truth_target_ids"
+        raw_matches = row.get(col_name, "")
         if pd.isna(raw_matches) or not str(raw_matches).strip():
             gt[s1] = set()
         else:
-            gt[s1] = {m.strip() for m in str(raw_matches).split(",") if m.strip()}
+            # Handle brackets/quotes if formatted as string representation of list
+            clean_str = str(raw_matches).strip("[]'\" ")
+            gt[s1] = {m.strip(" '\"") for m in clean_str.split(",") if m.strip(" '\"")}
 
     # Requirement 8: If ground-truth IDs are missing from train_source1, fail with clear diagnostic
     if verify_all_s1_present is not None:
@@ -169,6 +172,48 @@ class EntityResolutionPipeline:
             except Exception as e:
                 logger.warning(f"Could not load optimal threshold: {e}")
 
+    def _generate_pair_matrix(
+        self,
+        s1_records: List[Dict[str, Any]],
+        ground_truth: Dict[str, Set[str]],
+        blocker: MultiIndexBlocker,
+        target_map: Dict[str, Dict[str, Any]],
+        desc: str = "Building Pairs",
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Generate pairwise feature matrix (X) and binary labels (y) using the
+        exact same feature extraction and hard-negative mining procedure.
+        """
+        X_list, y_list = [], []
+        max_negatives = self.config.max_negatives_per_positive
+
+        for s1_rec in tqdm(s1_records, desc=desc):
+            s1_id = s1_rec["entity_id"]
+            true_matches = ground_truth.get(s1_id, set())
+            candidates = blocker.retrieve_candidates(s1_rec)
+
+            # Positives
+            for m_id in true_matches:
+                if m_id in target_map:
+                    feats = compute_pair_features(s1_rec, target_map[m_id])
+                    X_list.append(feats)
+                    y_list.append(1)
+
+            # Mined Hard Negatives from blocker candidates
+            neg_count = 0
+            for c_id in candidates:
+                if c_id not in true_matches and c_id in target_map:
+                    feats = compute_pair_features(s1_rec, target_map[c_id])
+                    X_list.append(feats)
+                    y_list.append(0)
+                    neg_count += 1
+                    if neg_count >= max_negatives:
+                        break
+
+        X = np.array(X_list, dtype=np.float32) if X_list else np.empty((0, len(FEATURE_NAMES)), dtype=np.float32)
+        y = np.array(y_list, dtype=np.int32) if y_list else np.empty(0, dtype=np.int32)
+        return X, y
+
     def fit(self):
         """Train pipeline with strict holdout validation and early stopping."""
         logger.info("Starting Pipeline Training Phase...")
@@ -235,6 +280,12 @@ class EntityResolutionPipeline:
         val_s1 = all_s1_list[:val_size]
         fit_s1 = all_s1_list[val_size:]
 
+        fit_s1_ids = {r["entity_id"] for r in fit_s1}
+        val_s1_ids = {r["entity_id"] for r in val_s1}
+        assert fit_s1_ids.isdisjoint(val_s1_ids), (
+            f"Critical integrity failure: train and validation S1 sets overlap by {len(fit_s1_ids & val_s1_ids)} entities!"
+        )
+
         val_gt = {r["entity_id"]: gt.get(r["entity_id"], set()) for r in val_s1}
         fit_gt = {r["entity_id"]: gt.get(r["entity_id"], set()) for r in fit_s1}
 
@@ -283,68 +334,60 @@ class EntityResolutionPipeline:
         val_blocker.prune_large_blocks()
         val_target_map = {r["entity_id"]: r for r in val_targets}
 
-        # 6. Build Training Pair Matrix (Positives + Mined Hard Negatives)
+        # 6. Build Training and Validation Pair Matrices using identical feature extraction
         logger.info("Generating training pairs using train_blocker...")
-        X_train_list, y_train_list = [], []
+        X_train, y_train = self._generate_pair_matrix(
+            fit_s1, fit_gt, train_blocker, train_target_map, desc="Building Train Pairs"
+        )
 
-        for s1_rec in tqdm(fit_s1, desc="Building Train Pairs"):
-            s1_id = s1_rec["entity_id"]
-            true_matches = fit_gt.get(s1_id, set())
-            candidates = train_blocker.retrieve_candidates(s1_rec)
-
-            # Positives
-            for m_id in true_matches:
-                if m_id in train_target_map:
-                    feats = compute_pair_features(s1_rec, train_target_map[m_id])
-                    X_train_list.append(feats)
-                    y_train_list.append(1)
-
-            # Hard Negatives
-            neg_count = 0
-            for c_id in candidates:
-                if c_id not in true_matches and c_id in train_target_map:
-                    feats = compute_pair_features(s1_rec, train_target_map[c_id])
-                    X_train_list.append(feats)
-                    y_train_list.append(0)
-                    neg_count += 1
-                    if neg_count >= self.config.max_negatives_per_positive:
-                        break
-
-        # 7. Build Validation Pair Matrix for Early Stopping (using val_blocker)
         logger.info("Generating validation pairs for model early stopping using val_blocker...")
-        X_val_list, y_val_list = [], []
+        X_val, y_val = self._generate_pair_matrix(
+            val_s1, val_gt, val_blocker, val_target_map, desc="Building Val Pairs"
+        )
 
-        for s1_rec in tqdm(val_s1, desc="Building Val Pairs"):
-            s1_id = s1_rec["entity_id"]
-            true_matches = val_gt.get(s1_id, set())
-            candidates = val_blocker.retrieve_candidates(s1_rec)
+        train_pos = int(np.sum(y_train)) if len(y_train) > 0 else 0
+        train_neg = int(len(y_train) - train_pos)
+        val_pos = int(np.sum(y_val)) if len(y_val) > 0 else 0
+        val_neg = int(len(y_val) - val_pos)
 
-            for m_id in true_matches:
-                if m_id in val_target_map:
-                    X_val_list.append(compute_pair_features(s1_rec, val_target_map[m_id]))
-                    y_val_list.append(1)
+        # Requirement 5: Log training/validation pair counts and positives/negatives
+        logger.info("============================================================")
+        logger.info("PAIR MATRIX GENERATION & VALIDATION SUMMARY:")
+        logger.info(f"  Training Pair Count:         {len(X_train):,} (Pos: {train_pos:,}, Neg: {train_neg:,})")
+        logger.info(f"  Validation Pair Count:       {len(X_val):,} (Pos: {val_pos:,}, Neg: {val_neg:,})")
+        logger.info("============================================================")
 
-            neg_count = 0
-            for c_id in candidates:
-                if c_id not in true_matches and c_id in val_target_map:
-                    X_val_list.append(compute_pair_features(s1_rec, val_target_map[c_id]))
-                    y_val_list.append(0)
-                    neg_count += 1
-                    if neg_count >= 10:
-                        break
-
-        X_train = np.array(X_train_list, dtype=np.float32)
-        y_train = np.array(y_train_list, dtype=np.int32)
-        X_val = np.array(X_val_list, dtype=np.float32) if X_val_list else None
-        y_val = np.array(y_val_list, dtype=np.int32) if y_val_list else None
-
-        logger.info(f"Train matrix: {X_train.shape} (Positives: {np.sum(y_train):,}, Negatives: {len(y_train) - np.sum(y_train):,})")
-        if X_val is not None:
-            logger.info(f"Val matrix: {X_val.shape} (Positives: {np.sum(y_val):,}, Negatives: {len(y_val) - np.sum(y_val):,})")
-
-        # Train LightGBM model WITH active validation early stopping
+        # 7. Train LightGBM model WITH active validation early stopping
         logger.info("Fitting LightGBM classifier with early stopping...")
         self.model.train(X_train, y_train, X_val=X_val, y_val=y_val)
+
+        best_iter = self.model.best_iteration_
+        val_logloss = self.model.validation_loss_
+
+        logger.info("============================================================")
+        logger.info("LIGHTGBM EARLY STOPPING TRAINING REPORT:")
+        logger.info(f"  Training Pair Count:         {len(X_train):,}")
+        logger.info(f"  Validation Pair Count:       {len(X_val):,}")
+        logger.info(f"  Training Positives:          {train_pos:,}")
+        logger.info(f"  Training Negatives:          {train_neg:,}")
+        logger.info(f"  Validation Positives:        {val_pos:,}")
+        logger.info(f"  Validation Negatives:        {val_neg:,}")
+        logger.info(f"  Configured n_estimators:     {self.config.model.n_estimators}")
+        logger.info(f"  Best Iteration:              {best_iter}")
+        logger.info(f"  Validation Binary Logloss:   {val_logloss if val_logloss is not None else 'N/A'}")
+        logger.info("============================================================")
+
+        # Requirement 6: Verify the model actually stopped at best_iteration_
+        if len(X_val) > 0 and best_iter is not None:
+            assert best_iter > 0, "Model best_iteration_ must be a positive integer"
+            assert best_iter <= self.config.model.n_estimators, (
+                f"Model best_iteration_ ({best_iter}) exceeds configured "
+                f"n_estimators ({self.config.model.n_estimators})"
+            )
+            logger.info(
+                f"Verified: model stopped at best_iteration_ = {best_iter} "
+                f"(configured max n_estimators = {self.config.model.n_estimators})"
+            )
 
         # Feature importances
         importances = self.model.get_feature_importances()
@@ -392,13 +435,18 @@ class EntityResolutionPipeline:
             "optimal_threshold": float(best_tau),
             "threshold_search_history": {str(k): float(v) for k, v in history.items()},
             "train_matrix_shape": list(X_train.shape),
-            "train_positives": int(np.sum(y_train)),
-            "train_negatives": int(len(y_train) - np.sum(y_train)),
-            "val_matrix_shape": list(X_val.shape) if X_val is not None else None,
-            "val_positives": int(np.sum(y_val)) if y_val is not None else None,
-            "val_negatives": int(len(y_val) - np.sum(y_val)) if y_val is not None else None,
+            "train_pair_count": int(len(X_train)),
+            "train_positives": train_pos,
+            "train_negatives": train_neg,
+            "val_matrix_shape": list(X_val.shape),
+            "val_pair_count": int(len(X_val)),
+            "val_positives": val_pos,
+            "val_negatives": val_neg,
             "train_s1_count": len(fit_s1),
             "val_s1_count": len(val_s1),
+            "early_stopping_best_iteration": int(best_iter if best_iter is not None else self.config.model.n_estimators),
+            "validation_binary_logloss": float(val_logloss) if val_logloss is not None else None,
+            "stopped_early": bool(best_iter is not None and best_iter < self.config.model.n_estimators),
             "training_coverage": {
                 "training_mode": self.config.training_mode,
                 "total_s1_available": int(total_available_s1),
@@ -406,11 +454,9 @@ class EntityResolutionPipeline:
                 "coverage_percentage": float(coverage_pct),
                 "s1_entities_with_gt": int(s1_with_gt),
                 "positive_links": int(positive_links),
-                "negative_pairs": int(len(y_train) - np.sum(y_train)),
+                "negative_pairs": train_neg,
             },
-            # Explicitly convert numpy scalar importances to Python float for JSON compatibility
             "feature_importances": {k: float(v) for k, v in importances.items()},
-            "early_stopping_best_iteration": int(getattr(self.model.clf, "best_iteration_", 0) or 0),
             "blocking_config": {
                 "max_candidates_per_entity": self.config.blocking.max_candidates_per_entity,
                 "max_block_size": self.config.blocking.max_block_size,

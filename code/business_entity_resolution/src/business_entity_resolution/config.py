@@ -120,6 +120,7 @@ class ModelConfig:
     reg_lambda: float = 1.0
     random_state: int = 42
     n_jobs: int = -1
+    early_stopping_rounds: int = 30
 
 
 @dataclass
