@@ -5,7 +5,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Validation Status](https://img.shields.io/badge/Validator-PASS-brightgreen.svg)]()
-[![Tests](https://img.shields.io/badge/Tests-169%2F169%20Passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-168%2F168%20Passed-brightgreen.svg)]()
 
 ---
 
@@ -43,7 +43,7 @@
 │       │       ├── model.py            # LightGBM GBDT training wrapper & persistence
 │       │       ├── threshold.py        # 1D grid search threshold optimizer
 │       │       └── pipeline.py         # Streaming train, tune, and test inference engine
-│       ├── tests/                      # Automated test suite (169/169 passing)
+│       ├── tests/                      # Automated test suite (168/168 passing)
 │       │   ├── test_blocking.py
 │       │   ├── test_blocking_extended.py
 │       │   ├── test_blocking_production.py
@@ -122,7 +122,7 @@ pip install -e .
 pytest tests/ -v
 ```
 
-Expected: **169 passed**
+Expected: **168 passed**
 
 ### 3. Measure Blocking Recall (requires dataset)
 

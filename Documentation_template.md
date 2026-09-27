@@ -79,7 +79,7 @@ Complete runnable pipeline is provided in `code/business_entity_resolution/`:
 - `run_pipeline.py`: Entry point reproducing `output/matching_results.tsv` and `output/candidate_pairs.tsv`.
 - `evaluate_blocking.py`: Script to reproduce candidate link recall.
 - `requirements.txt`: Exact pinned dependencies (`==`).
-- `tests/`: 169 automated tests passing (including end-to-end integration and edge-case tests).
+- `tests/`: 168 automated tests passing (including end-to-end integration and edge-case tests).
 
 ### B. Additional Results
 Empirical recall measurements across safety caps ($K$) on actual training ground truth:
