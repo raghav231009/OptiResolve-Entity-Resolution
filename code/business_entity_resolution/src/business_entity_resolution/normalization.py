@@ -7,6 +7,11 @@ import re
 import unicodedata
 from typing import Set, Tuple
 
+# Missing value sentinels that represent empty/uninformative data
+MISSING_SENTINELS = {
+    "", "nan", "none", "null", "n/a", "na", "-", ".", "undefined", "unknown"
+}
+
 # Comprehensive corporate suffix patterns (applied after lowercasing).
 # NOTE: 'fils' is intentionally excluded from the main pattern and handled
 # separately via TRAILING_FILS_REGEX to avoid stripping from mid-name brand
@@ -55,20 +60,55 @@ ADDRESS_ABBR_MAP = {
     "pl": "place", "pl.": "place",
     "all": "allee", "all.": "allee",
     "imp": "impasse", "imp.": "impasse",
+    "rte": "route", "rte.": "route",
+    "ch": "chemin", "ch.": "chemin",
+    "crs": "cours", "crs.": "cours",
+    "bat": "batiment", "bat.": "batiment",
+    "etg": "etage", "etg.": "etage",
 }
 
-PUNCT_REGEX = re.compile(r"[^\w\s]")
+PUNCT_REGEX = re.compile(r"[^\w\s\u0900-\u0D7F]")
 WHITESPACE_REGEX = re.compile(r"\s+")
-POSTAL_CODE_REGEX = re.compile(r"\b\d{4,6}\b")
+POSTAL_5_6_DIGIT_REGEX = re.compile(r"\b\d{5,6}\b")
+POSTAL_4_DIGIT_REGEX = re.compile(r"\b\d{4}\b")
 DIGIT_TOKEN_REGEX = re.compile(r"\b\d+[a-zA-Z]?\b")
+SUITE_KEYWORD_REGEX = re.compile(
+    r"\b(?:suite|ste|apt|apartment|unit|bldg|building|floor|fl|room|rm|box|po\s*box)\b\.?\s*(\d+[a-zA-Z]?)",
+    re.IGNORECASE,
+)
+
+
+def _is_latin_accent(c: str) -> bool:
+    """Check if character is a Latin/European combining diacritical mark (not an Indic vowel sign)."""
+    cp = ord(c)
+    return (
+        (0x0300 <= cp <= 0x036F)
+        or (0x1AB0 <= cp <= 0x1AFF)
+        or (0x1DC0 <= cp <= 0x1DFF)
+        or (0x20D0 <= cp <= 0x20FF)
+        or (0xFE20 <= cp <= 0xFE2F)
+    )
 
 
 def strip_accents_and_normalize(text: str) -> str:
-    """Normalize unicode, strip accents (NFKD), lowercase, and canonicalize symbols."""
+    """
+    Normalize unicode, strip accents (NFKD), lowercase, and canonicalize symbols.
+    Handles French ligatures (œ -> oe, æ -> ae), removes zero-width spaces,
+    preserves non-Latin script characters (Devanagari matras), and returns empty
+    string for missing value sentinels.
+    """
     if not text or not isinstance(text, str):
         return ""
-    decomposed = unicodedata.normalize("NFKD", text)
-    stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
+    if text.strip().lower() in MISSING_SENTINELS:
+        return ""
+
+    # Normalize ligatures and invisible characters before decomposition
+    cleaned = text.replace("œ", "oe").replace("Œ", "oe")
+    cleaned = cleaned.replace("æ", "ae").replace("Æ", "ae")
+    cleaned = cleaned.replace("\u200b", "").replace("\u00ad", "")
+
+    decomposed = unicodedata.normalize("NFKD", cleaned)
+    stripped = "".join(c for c in decomposed if not (unicodedata.combining(c) and _is_latin_accent(c)))
     cleaned = stripped.lower()
     cleaned = cleaned.replace("&", " and ")
     cleaned = PUNCT_REGEX.sub(" ", cleaned)
@@ -90,7 +130,7 @@ def clean_business_name(name: str) -> Tuple[str, str]:
     Returns (cleaned_name, root_name_without_legal_suffixes).
 
     Applies two-pass suffix stripping:
-      1. Main LEGAL_SUFFIX_REGEX removes most common suffixes (LLC, Ltd, SARL, etc.)
+      1. Main LEGAL_SUFFIX_REGEX removes common legal suffixes (LLC, Ltd, SARL, etc.)
       2. TRAILING_FILS_REGEX removes trailing 'fils'/'et fils' only at end-of-name
          (avoids falsely stripping 'Le Fils Dupont'-style brand names).
 
@@ -110,11 +150,24 @@ def clean_business_name(name: str) -> Tuple[str, str]:
 
 
 def extract_postal_code(address: str) -> str:
-    """Extract 4-6 digit numeric postal / PIN code from address."""
+    """
+    Extract 5-6 digit numeric postal / PIN code from address.
+    Prioritizes 5-6 digit codes (US ZIP 5-digit, France 5-digit, India PIN 6-digit),
+    selecting the trailing postal code to avoid 4-digit street number collisions.
+    """
     if not address or not isinstance(address, str):
         return ""
-    match = POSTAL_CODE_REGEX.search(address)
-    return match.group(0) if match else ""
+    # Look for 5-6 digit postal codes first (all 3 countries: US 5-digit, FR 5-digit, IN 6-digit)
+    matches_5_6 = POSTAL_5_6_DIGIT_REGEX.findall(address)
+    if matches_5_6:
+        return matches_5_6[-1]
+    # Fallback to 4-digit codes only if not at the start (building numbers appear at index 0)
+    matches_4 = POSTAL_4_DIGIT_REGEX.findall(address)
+    if matches_4:
+        first_match_start = address.find(matches_4[-1])
+        if first_match_start > 0:
+            return matches_4[-1]
+    return ""
 
 
 def extract_numeric_tokens(address: str) -> Set[str]:
@@ -126,17 +179,24 @@ def extract_numeric_tokens(address: str) -> Set[str]:
 
 def extract_building_number(address: str, postal_code: str = "") -> str:
     """
-    Extract the primary building / house / street number, explicitly distinct from the postal code.
+    Extract the primary building / house / street number, explicitly distinct from
+    the postal code and internal unit/suite numbers.
     E.g. '85 Wayne Ave, NY 12883' -> '85' (not '12883').
+    E.g. '1200 Main St, Suite 400, NY 10001' -> '1200' (not '400' or '10001').
     """
     if not address or not isinstance(address, str):
         return ""
-    tokens = DIGIT_TOKEN_REGEX.findall(address.lower())
+    addr_lower = address.lower()
+    suite_tokens = set(SUITE_KEYWORD_REGEX.findall(addr_lower))
+    tokens = DIGIT_TOKEN_REGEX.findall(addr_lower)
     for tok in tokens:
         # Avoid picking the postal code as the building number
         if postal_code and tok == postal_code:
             continue
-        # Standard building numbers are typically 1 to 4 digits
+        # Avoid picking suite / unit numbers as the primary street building number
+        if tok in suite_tokens:
+            continue
+        # Standard building numbers are typically 1 to 5 alphanumeric characters
         if len(tok) <= 5:
             return tok
     return ""

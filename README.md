@@ -122,7 +122,7 @@ pip install -e .
 pytest tests/ -v
 ```
 
-Expected: **193 passed**
+Expected: **218 passed**
 
 ### 3. Measure Blocking Recall (requires dataset)
 
