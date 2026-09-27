@@ -657,20 +657,52 @@ class EntityResolutionPipeline:
             search_start=self.config.threshold_search_start,
             search_end=self.config.threshold_search_end,
             step=self.config.threshold_search_step,
+            fine_step=getattr(self.config, "threshold_fine_step", 0.002),
+            fine_window=getattr(self.config, "threshold_fine_window", 0.03),
         )
         self.optimal_threshold = best_tau
 
+        best_metric = history.get(best_tau)
+        best_links = int(best_metric["predicted_links"]) if best_metric else 0
+        best_empty = int(best_metric["empty_predictions"]) if best_metric else 0
+        best_singleton_fp = int(best_metric["singleton_false_positives"]) if best_metric else 0
+
         thresh_path = self.config.paths.artifacts_dir / "optimal_threshold.json"
         with open(thresh_path, "w", encoding="utf-8") as f:
-            json.dump({"optimal_threshold": best_tau, "validation_macro_f05": best_score}, f, indent=2)
-        logger.info(f"==> OPTIMAL THRESHOLD LOCKED: tau* = {best_tau:.3f} with Validation Macro F0.5 = {best_score:.4f} (Saved to {thresh_path})")
+            json.dump({
+                "optimal_threshold": float(best_tau),
+                "validation_macro_f05": float(best_score),
+                "predicted_links": best_links,
+                "empty_predictions": best_empty,
+                "singleton_false_positives": best_singleton_fp,
+                "search_history": [
+                    metric.to_dict() if hasattr(metric, "to_dict") else dict(metric)
+                    for t, metric in sorted(history.items(), key=lambda x: x[0])
+                ],
+            }, f, indent=2)
+        logger.info(
+            f"==> OPTIMAL THRESHOLD LOCKED: tau* = {best_tau:.3f} with Validation Macro F0.5 = {best_score:.4f}, "
+            f"predicted_links = {best_links}, empty_predictions = {best_empty}, "
+            f"singleton_false_positives = {best_singleton_fp} (Saved to {thresh_path})"
+        )
 
         # Persist comprehensive training results for reproducibility (Issue #15)
         results_path = self.config.paths.artifacts_dir / "training_results.json"
         training_results = {
             "validation_macro_f05": float(best_score),
             "optimal_threshold": float(best_tau),
+            "optimal_threshold_metrics": {
+                "threshold": float(best_tau),
+                "macro_f05": float(best_score),
+                "predicted_links": best_links,
+                "empty_predictions": best_empty,
+                "singleton_false_positives": best_singleton_fp,
+            },
             "threshold_search_history": {str(k): float(v) for k, v in history.items()},
+            "threshold_search_records": [
+                metric.to_dict() if hasattr(metric, "to_dict") else dict(metric)
+                for t, metric in sorted(history.items(), key=lambda x: x[0])
+            ],
             "train_matrix_shape": list(X_train.shape),
             "train_pair_count": int(len(X_train)),
             "train_positives": train_pos,

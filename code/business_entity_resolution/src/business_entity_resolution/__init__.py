@@ -8,7 +8,7 @@ from .blocking import MultiIndexBlocker
 from .features import compute_pair_features, FEATURE_NAMES
 from .metrics import compute_macro_f05, compute_entity_f05
 from .model import EntityResolutionModel
-from .threshold import optimize_threshold
+from .threshold import optimize_threshold, evaluate_threshold, ThresholdMetric
 
 __all__ = [
     "PipelineConfig",
@@ -25,4 +25,6 @@ __all__ = [
     "compute_entity_f05",
     "EntityResolutionModel",
     "optimize_threshold",
+    "evaluate_threshold",
+    "ThresholdMetric",
 ]

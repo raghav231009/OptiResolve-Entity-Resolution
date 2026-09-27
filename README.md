@@ -122,7 +122,7 @@ pip install -e .
 pytest tests/ -v
 ```
 
-Expected: **168 passed**
+Expected: **185 passed**
 
 ### 3. Measure Blocking Recall (requires dataset)
 
@@ -211,6 +211,8 @@ Key hyperparameters (in [`config.py`](code/business_entity_resolution/src/busine
 
 - **Blocking recall** was empirically measured at 90.87% link recall (79.69% S1 complete entity recall) at K=80 on a 5,000-entity sample across 217,362 targets.
   Full-dataset recall may vary slightly. Re-measure with `python evaluate_blocking.py`.
-- **Validation Macro F₀.₅** depends on the train/val split random seed (42) and data.
-  The current stored threshold (`0.81`) and score (`0.9204`) are from the last full run.
+- **Validation Macro F₀.₅ & Threshold Optimization**:
+  - Threshold optimization is strictly evaluated on validation predictions with two-phase coarse (0.50–0.99, step 0.01) and fine zoom (step 0.002).
+  - Measured optimal threshold: $\tau^* = \mathbf{0.780}$ (Validation Macro $F_{0.5} = \mathbf{0.9426}$, with 61,994 predicted links, 1,513 empty predictions, and 30 singleton false positives out of 20,000 validation S1 entities).
+  - Notice that relying on an assumed $0.910$ default yields only $0.9350$ Macro $F_{0.5}$, whereas optimizing to $\tau^* = 0.780$ provides a $+0.0076$ absolute gain. Full grid history is persisted in `artifacts/optimal_threshold.json`.
 - **Full-dataset training** takes approximately 30-60 minutes depending on hardware.

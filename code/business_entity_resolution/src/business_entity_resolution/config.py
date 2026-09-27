@@ -150,9 +150,11 @@ class PipelineConfig:
     min_negatives_per_zero_positive_entity: int = 10
 
     # Threshold tuning
-    threshold_search_start: float = 0.65
-    threshold_search_end: float = 0.96
-    threshold_search_step: float = 0.02
+    threshold_search_start: float = 0.50
+    threshold_search_end: float = 0.99
+    threshold_search_step: float = 0.01
+    threshold_fine_step: float = 0.002
+    threshold_fine_window: float = 0.03
     default_threshold: float = 0.910
 
     @property
