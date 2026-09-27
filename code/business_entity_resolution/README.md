@@ -18,7 +18,7 @@ This solution resolves noisy business records across three independent data sour
 5. **Precision-Tuned LightGBM GBDT with Early Stopping:** Trained with targeted positive coverage and hard-negative mining, actively monitored with early stopping (30 stopping rounds) against an isolated holdout validation set.
 6. **Strict Validation Isolation:** Training and validation target pools and blockers are built independently with zero target leakage.
 7. **Singleton-Aware Threshold Optimization:** Evaluates exact competition Macro $F_{0.5}$, penalizing singleton false positives from $1.0$ down to $0.0$, tuning the classification threshold for high precision. Optimal $\tau^*$ is discovered per-run and written to `artifacts/optimal_threshold.json`.
-8. **Candidate Safety Cap (K = 80):** High-recall safety cap ($K = 80$, achieving 97.6% link recall) with Priority Tier Retention to protect true physical and root name matches from truncation.
+8. **Candidate Safety Cap (K = 80):** Production safety cap ($K = 80$, achieving 90.87% link recall, 79.69% S1 complete recall, and 62.56 avg candidates/entity) with Priority Tier Retention to protect true physical and root name matches from truncation. Configurable via `--max-candidates` CLI flag or `OPTIRESOLVE_MAX_CANDIDATES`.
 9. **Chunked Streaming Test Inference:** Scalable test processing in chunks to maintain low memory footprint without OOM.
 
 ---
@@ -90,6 +90,19 @@ pytest tests/ -v
 ```bash
 python evaluate_blocking.py
 ```
+
+#### Measured Empirical Candidate Cap Evaluation (`blocking_recall_results.json`):
+
+| Candidate Cap $K$ | Link Recall | S1 Entity Recall | Total Candidates | Avg Cands / Entity | P95 | P99 |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **20** | 89.55% | 76.71% | 89,258 | 18.95 | 20.0 | 20.0 |
+| **40** | 90.36% | 78.60% | 166,242 | 35.29 | 40.0 | 40.0 |
+| **60** | 90.58% | 79.13% | 233,723 | 49.61 | 60.0 | 60.0 |
+| **80 (Default)** | **90.87%** | **79.69%** | 294,735 | 62.56 | 80.0 | 80.0 |
+| **100** | 91.04% | 79.94% | 351,247 | 74.56 | 100.0 | 100.0 |
+| **150** | 91.45% | 80.70% | 480,032 | 101.90 | 150.0 | 150.0 |
+
+*Empirically measured on actual ground truth across 217,362 targets with production 6-channel sub-blocking.*
 
 ### Run Pipeline:
 ```bash

@@ -58,6 +58,14 @@ def main():
     parser.add_argument("--train-limit", type=int, default=None, help="Explicit max S1 entities for training (None = 100% full dataset in production)")
     parser.add_argument("--val-limit", type=int, default=None, help="Explicit max S1 entities for validation (None = proportional 20% holdout)")
     parser.add_argument("--threshold", type=float, default=None, help="Explicit threshold override")
+    parser.add_argument(
+        "--max-candidates",
+        "--max-candidates-per-entity",
+        "-k",
+        type=int,
+        default=None,
+        help="Explicit candidate cap K per entity override (default: configured in BlockingConfig)",
+    )
     parser.add_argument("--batch-size", type=int, default=50000, help="Batch size for streaming test inference")
     args = parser.parse_args()
 
@@ -101,6 +109,9 @@ def main():
 
     if args.threshold is not None:
         config.default_threshold = args.threshold
+
+    if args.max_candidates is not None:
+        config.blocking.max_candidates_per_entity = args.max_candidates
 
     pipeline = EntityResolutionPipeline(config)
 

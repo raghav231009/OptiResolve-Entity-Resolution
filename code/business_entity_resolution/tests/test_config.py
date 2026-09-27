@@ -119,6 +119,15 @@ class TestBlockingConfig:
         assert bc.min_token_len == 3
         assert bc.name_prefix_len == 4
 
+    def test_env_var_override(self, monkeypatch):
+        monkeypatch.setenv("OPTIRESOLVE_MAX_CANDIDATES", "60")
+        bc = BlockingConfig()
+        assert bc.max_candidates_per_entity == 60
+
+    def test_explicit_override(self):
+        bc = BlockingConfig(max_candidates_per_entity=100)
+        assert bc.max_candidates_per_entity == 100
+
 
 class TestModelConfig:
     def test_defaults(self):

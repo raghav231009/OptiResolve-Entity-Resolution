@@ -95,9 +95,19 @@ class PathConfig:
         return self.artifacts_dir / "lightgbm_er_model.joblib"
 
 
+def _default_max_candidates() -> int:
+    val = os.environ.get("OPTIRESOLVE_MAX_CANDIDATES")
+    if val:
+        try:
+            return int(val)
+        except ValueError:
+            pass
+    return 80
+
+
 @dataclass
 class BlockingConfig:
-    max_candidates_per_entity: int = 80  # Optimized candidate safety cap
+    max_candidates_per_entity: int = field(default_factory=_default_max_candidates)
     min_token_len: int = 3
     name_prefix_len: int = 4
     max_block_size: int = 350
