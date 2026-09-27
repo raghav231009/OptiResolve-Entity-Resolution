@@ -114,18 +114,131 @@ def load_ground_truth(
     return gt
 
 
+def analyze_target_s1_cardinality(ground_truth: Dict[str, Set[str]]) -> Dict[str, Any]:
+    """
+    Analyze ground truth relationship cardinality between S1 and target operational entities (S2/S3).
+    Detects whether targets legitimately map to multiple S1 entities or are strictly 1-to-1.
+    """
+    target_to_s1: Dict[str, List[str]] = {}
+    for s1_id, targets in ground_truth.items():
+        for t_id in targets:
+            if t_id not in target_to_s1:
+                target_to_s1[t_id] = [s1_id]
+            else:
+                target_to_s1[t_id].append(s1_id)
+
+    multi_mapped = {t: s1s for t, s1s in target_to_s1.items() if len(s1s) > 1}
+    max_s1_per_target = max((len(s1s) for s1s in target_to_s1.values()), default=0)
+
+    stats = {
+        "total_unique_targets": len(target_to_s1),
+        "multi_mapped_targets_count": len(multi_mapped),
+        "max_s1_per_target": max_s1_per_target,
+        "is_strictly_one_to_one": len(multi_mapped) == 0,
+        "sample_multi_mapped": {k: multi_mapped[k] for k in list(multi_mapped.keys())[:5]} if multi_mapped else {},
+    }
+    return stats
+
+
+def load_isolated_target_pools(
+    source_paths: List[Path],
+    train_needed_ids: Set[str],
+    val_needed_ids: Set[str],
+    train_background_sample_per_file: int = 120000,
+    val_background_sample_per_file: int = 60000,
+    chunksize: int = 100000,
+) -> Tuple[List[dict], List[dict]]:
+    """
+    Stream through operational target sources (Source 2 and Source 3) and construct
+    two strictly isolated target pools: one for training and one for validation.
+
+    Guarantees:
+    1. Zero ground-truth leakage: validation target IDs NEVER appear in the training target pool.
+    2. Zero training target IDs appear in the validation pool when corresponding to validation ground truth.
+    3. Background negatives are sampled separately and disjointly (even vs odd slices).
+    4. Memory-efficient streaming pass without redundant file reads.
+    """
+    train_targets: List[dict] = []
+    val_targets: List[dict] = []
+
+    remaining_train_needed = set(train_needed_ids)
+    remaining_val_needed = set(val_needed_ids)
+    all_needed_ids = train_needed_ids | val_needed_ids
+
+    for path in source_paths:
+        logger.info(f"Isolated targeted loading from {path.name}...")
+        train_bg_loaded = 0
+        val_bg_loaded = 0
+
+        for chunk in pd.read_csv(path, sep="\t", chunksize=chunksize, dtype=str):
+            # 1. Extract Train True Targets
+            if remaining_train_needed:
+                train_mask = chunk["entity_id"].isin(remaining_train_needed)
+                train_rows = chunk[train_mask]
+                for r in train_rows.to_dict("records"):
+                    train_targets.append(preprocess_record(r))
+                    remaining_train_needed.discard(r["entity_id"])
+            else:
+                train_mask = pd.Series(False, index=chunk.index)
+
+            # 2. Extract Validation True Targets (Strictly disjoint from train true targets)
+            if remaining_val_needed:
+                val_mask = chunk["entity_id"].isin(remaining_val_needed)
+                val_rows = chunk[val_mask]
+                for r in val_rows.to_dict("records"):
+                    val_targets.append(preprocess_record(r))
+                    remaining_val_needed.discard(r["entity_id"])
+            else:
+                val_mask = pd.Series(False, index=chunk.index)
+
+            # 3. Disjoint Background Distractor Sampling
+            # Exclude ANY ground truth target ID (from either train or val)
+            non_gt_mask = ~train_mask & ~val_mask & ~chunk["entity_id"].isin(all_needed_ids)
+            distractor_rows = chunk[non_gt_mask]
+
+            if len(distractor_rows) > 0 and (
+                train_bg_loaded < train_background_sample_per_file
+                or val_bg_loaded < val_background_sample_per_file
+            ):
+                # Partition distractors: even indices to train, odd indices to val
+                even_slice = distractor_rows.iloc[0::2]
+                odd_slice = distractor_rows.iloc[1::2]
+
+                if train_bg_loaded < train_background_sample_per_file and len(even_slice) > 0:
+                    take_train = min(len(even_slice), min(10000, train_background_sample_per_file - train_bg_loaded))
+                    for r in even_slice.iloc[:take_train].to_dict("records"):
+                        train_targets.append(preprocess_record(r))
+                    train_bg_loaded += take_train
+
+                if val_bg_loaded < val_background_sample_per_file and len(odd_slice) > 0:
+                    take_val = min(len(odd_slice), min(5000, val_background_sample_per_file - val_bg_loaded))
+                    for r in odd_slice.iloc[:take_val].to_dict("records"):
+                        val_targets.append(preprocess_record(r))
+                    val_bg_loaded += take_val
+
+    logger.info(
+        f"Isolated target loading complete: {len(train_targets):,} train targets "
+        f"(Missing true: {len(remaining_train_needed)}), {len(val_targets):,} val targets "
+        f"(Missing true: {len(remaining_val_needed)})."
+    )
+    return train_targets, val_targets
+
+
 def load_targeted_training_targets(
     source_paths: List[Path],
     needed_ids: Set[str],
+    forbidden_ids: Optional[Set[str]] = None,
     background_sample_per_file: int = 150000,
     chunksize: int = 100000,
 ) -> List[dict]:
     """
     Stream through target source files, ensuring all true matching target records
     are loaded, plus background distractors for negative mining.
+    Allows optional forbidden_ids to prevent target-level leakage.
     """
     targets = []
     remaining_needed = set(needed_ids)
+    forbidden = set(forbidden_ids) if forbidden_ids else set()
 
     for path in source_paths:
         logger.info(f"Targeted loading from {path.name}...")
@@ -139,6 +252,8 @@ def load_targeted_training_targets(
 
             if bg_loaded < background_sample_per_file:
                 other_rows = chunk[~mask_needed]
+                if forbidden:
+                    other_rows = other_rows[~other_rows["entity_id"].isin(forbidden)]
                 take_n = min(len(other_rows), min(10000, background_sample_per_file - bg_loaded))
                 for r in other_rows.iloc[:take_n].to_dict("records"):
                     targets.append(preprocess_record(r))
@@ -256,6 +371,15 @@ class EntityResolutionPipeline:
         s1_with_gt = sum(1 for sid in all_s1_ids if sid in gt and len(gt[sid]) > 0)
         positive_links = sum(len(gt[sid]) for sid in all_s1_ids if sid in gt)
 
+        # Ground Truth target-to-S1 relationship cardinality audit
+        cardinality_stats = analyze_target_s1_cardinality(gt)
+        logger.info(
+            f"Ground truth target cardinality audit: {cardinality_stats['total_unique_targets']:,} unique targets, "
+            f"max S1 per target = {cardinality_stats['max_s1_per_target']}, "
+            f"multi-mapped targets = {cardinality_stats['multi_mapped_targets_count']} "
+            f"({'strictly 1:1' if cardinality_stats['is_strictly_one_to_one'] else 'supports 1:N mapping'})."
+        )
+
         # Requirement 5: Explicitly log coverage metrics
         logger.info("============================================================")
         logger.info("TRAINING DATASET COVERAGE AUDIT:")
@@ -300,13 +424,43 @@ class EntityResolutionPipeline:
 
         logger.info(f"Independent target ID extraction: {len(fit_needed_ids):,} train targets, {len(val_needed_ids):,} val targets.")
 
-        # 4. Load Training Targets and Build Training Blocker
-        logger.info("Loading training targets into isolated train blocker...")
-        train_targets = load_targeted_training_targets(
+        # 4 & 5. Build Separate, Leakage-Free Target Pools for Train and Validation
+        logger.info("Loading isolated training and validation target pools...")
+        train_targets, val_targets = load_isolated_target_pools(
             [self.config.paths.train_source2, self.config.paths.train_source3],
-            needed_ids=fit_needed_ids,
-            background_sample_per_file=120000,
+            train_needed_ids=fit_needed_ids,
+            val_needed_ids=val_needed_ids,
+            train_background_sample_per_file=120000,
+            val_background_sample_per_file=60000,
         )
+
+        train_target_ids = {r["entity_id"] for r in train_targets}
+        val_target_ids = {r["entity_id"] for r in val_targets}
+        intersection = train_target_ids.intersection(val_target_ids)
+
+        # Requirement 9: Log train target IDs, validation target IDs, intersection size
+        logger.info("============================================================")
+        logger.info("TARGET-LEVEL VALIDATION LEAKAGE AUDIT:")
+        logger.info(f"  Training Target IDs:         {len(train_target_ids):,}")
+        logger.info(f"  Validation Target IDs:       {len(val_target_ids):,}")
+        logger.info(f"  Target Intersection Size:    {len(intersection):,}")
+        logger.info(f"  Multi-Mapped Target Count:   {cardinality_stats['multi_mapped_targets_count']:,}")
+        logger.info(f"  Max S1 Entities per Target:  {cardinality_stats['max_s1_per_target']}")
+        logger.info("============================================================")
+
+        # Requirement 10: Assert the intended separation
+        assert len(intersection) == 0, (
+            f"Target-level validation leakage detected! {len(intersection):,} targets overlap "
+            f"between train and validation pools: {list(intersection)[:5]}"
+        )
+        assert train_target_ids.isdisjoint(val_needed_ids), (
+            f"Critical target leakage: validation ground-truth targets found in training target pool!"
+        )
+        assert val_target_ids.isdisjoint(fit_needed_ids), (
+            f"Critical target leakage: training ground-truth targets found in validation target pool!"
+        )
+
+        # Build isolated training and validation blockers
         train_blocker = MultiIndexBlocker(
             max_candidates=self.config.blocking.max_candidates_per_entity,
             min_token_len=self.config.blocking.min_token_len,
@@ -317,13 +471,6 @@ class EntityResolutionPipeline:
         train_blocker.prune_large_blocks()
         train_target_map = {r["entity_id"]: r for r in train_targets}
 
-        # 5. Load Validation Targets and Build Independent Validation Blocker
-        logger.info("Loading validation targets into isolated validation blocker...")
-        val_targets = load_targeted_training_targets(
-            [self.config.paths.train_source2, self.config.paths.train_source3],
-            needed_ids=val_needed_ids,
-            background_sample_per_file=60000,
-        )
         val_blocker = MultiIndexBlocker(
             max_candidates=self.config.blocking.max_candidates_per_entity,
             min_token_len=self.config.blocking.min_token_len,
@@ -457,6 +604,14 @@ class EntityResolutionPipeline:
                 "negative_pairs": train_neg,
             },
             "feature_importances": {k: float(v) for k, v in importances.items()},
+            "target_leakage_audit": {
+                "train_target_count": int(len(train_target_ids)),
+                "val_target_count": int(len(val_target_ids)),
+                "target_intersection_size": int(len(intersection)),
+                "is_strictly_disjoint": bool(len(intersection) == 0),
+                "multi_mapped_targets_count": int(cardinality_stats["multi_mapped_targets_count"]),
+                "max_s1_per_target": int(cardinality_stats["max_s1_per_target"]),
+            },
             "blocking_config": {
                 "max_candidates_per_entity": self.config.blocking.max_candidates_per_entity,
                 "max_block_size": self.config.blocking.max_block_size,

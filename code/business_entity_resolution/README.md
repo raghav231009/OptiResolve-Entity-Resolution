@@ -57,6 +57,7 @@ code/business_entity_resolution/
     ├── test_normalization.py       # Multilingual normalization tests
     ├── test_normalization_extended.py  # Extended: fils, postal, building number edge cases
     ├── test_smoke_e2e.py           # Full pipeline smoke test with synthetic dataset
+    ├── test_target_leakage.py      # Target-level leakage prevention, background isolation, cardinality audit
     └── test_validation_early_stopping.py  # Disjointness, LightGBM early stopping, metrics logging
 ```
 
