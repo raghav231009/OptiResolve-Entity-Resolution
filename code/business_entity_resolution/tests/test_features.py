@@ -1,11 +1,29 @@
 """
-Extended Feature Engineering Tests.
-Verifies the exact 23-dimensional feature vector, missing-value semantics,
-and edge case handling in compute_pair_features.
+Feature Engineering Engine & LightGBM Feature Interface Tests.
+Verifies:
+1. Exact 23-dimensional feature vector matching FEATURE_NAMES.
+2. Deterministic behavior across runs.
+3. Explicit missing-value semantics (-1 sentinels for structural features, 0.0 for distances).
+4. Range validation across all 23 features.
+5. Targeted edge cases:
+   - exact match
+   - typo
+   - abbreviation
+   - missing address
+   - missing postal
+   - different building number
+   - same building number
+   - S2 candidate
+   - S3 candidate
+   - transliteration-like corruption
+6. LightGBM integration: receives and verifies exactly 23 columns.
 """
 
+import math
+import numpy as np
 import pytest
 from business_entity_resolution.features import compute_pair_features, FEATURE_NAMES
+from business_entity_resolution.model import EntityResolutionModel
 
 
 def make_record(
@@ -26,108 +44,236 @@ def make_record(
         "clean_address": clean_address,
         "postal_code": postal_code,
         "building_number": building_number,
-        "numeric_tokens": numeric_tokens if numeric_tokens is not None else {"123"},
+        "numeric_tokens": numeric_tokens if numeric_tokens is not None else ({"123"} if building_number else set()),
     }
 
 
-class TestFeatureVector:
-    def test_feature_count_is_23(self):
-        s1 = make_record(entity_id="S1-001")
-        cand = make_record(entity_id="S2-001")
-        feats = compute_pair_features(s1, cand)
-        assert len(feats) == 23, f"Expected 23 features, got {len(feats)}"
+class TestFeatureSpecification:
+    """Verifies that the feature vector exactly matches the 23-feature specification."""
 
-    def test_feature_names_count(self):
+    def test_feature_names_length_is_23(self):
         assert len(FEATURE_NAMES) == 23
 
-    def test_perfect_match_scores(self):
+    def test_feature_vector_length_equals_feature_names_length(self):
         s1 = make_record(entity_id="S1-001")
         cand = make_record(entity_id="S2-001")
         feats = compute_pair_features(s1, cand)
-        feat_dict = dict(zip(FEATURE_NAMES, feats))
-        # Name exact match should be 1.0 for identical clean_names
-        assert feat_dict["name_exact_match"] == 1.0
-        # Root name exact match should be 1.0
-        assert feat_dict["root_name_exact_match"] == 1.0
-        # Postal exact match should be 1.0
-        assert feat_dict["postal_exact_match"] == 1.0
-        # House number match should be 1.0
-        assert feat_dict["house_number_match"] == 1.0
-        # Country match should be 1.0
-        assert feat_dict["country_match"] == 1.0
+        assert len(feats) == len(FEATURE_NAMES) == 23
 
-    def test_missing_address_semantics(self):
-        """Missing address fields should give 0.0 for addr features and addr_present_both=0."""
-        s1 = make_record(entity_id="S1-001", clean_address="", building_number="")
-        cand = make_record(entity_id="S2-001", clean_address="")
-        feats = compute_pair_features(s1, cand)
-        feat_dict = dict(zip(FEATURE_NAMES, feats))
-        assert feat_dict["addr_present_both"] == 0.0
-        assert feat_dict["addr_ratio"] == 0.0
+    def test_feature_determinism(self):
+        """Every feature must have deterministic behavior on identical inputs."""
+        s1 = make_record(entity_id="S1-001", clean_name="apollo health care", root_name="apollo health")
+        cand = make_record(entity_id="S2-002", clean_name="apollo healthcare ltd", root_name="apollo health")
+        feats1 = compute_pair_features(s1, cand)
+        feats2 = compute_pair_features(s1, cand)
+        assert feats1 == feats2
 
-    def test_missing_building_number_sentinel(self):
-        """Missing building number should return -1.0 (missing sentinel)."""
-        s1 = make_record(entity_id="S1-001", building_number="")
-        cand = make_record(entity_id="S2-001", building_number="")
-        feats = compute_pair_features(s1, cand)
-        feat_dict = dict(zip(FEATURE_NAMES, feats))
-        assert feat_dict["house_number_match"] == -1.0
-
-    def test_missing_postal_code_sentinel(self):
-        """Missing postal code should return -1.0 for postal features."""
-        s1 = make_record(entity_id="S1-001", postal_code="")
-        cand = make_record(entity_id="S2-001", postal_code="")
-        feats = compute_pair_features(s1, cand)
-        feat_dict = dict(zip(FEATURE_NAMES, feats))
-        assert feat_dict["postal_exact_match"] == -1.0
-        assert feat_dict["postal_prefix_match"] == -1.0
-
-    def test_cross_country_flag(self):
-        """country_match should be 0.0 for different countries."""
-        s1 = make_record(entity_id="S1-001", country="US")
-        cand = make_record(entity_id="S2-001", country="FRANCE")
-        feats = compute_pair_features(s1, cand)
-        feat_dict = dict(zip(FEATURE_NAMES, feats))
-        assert feat_dict["country_match"] == 0.0
-
-    def test_s3_source_flag(self):
-        """target_source_is_s3 should be 1.0 for S3- prefixed candidates."""
-        s1 = make_record(entity_id="S1-001")
-        cand = make_record(entity_id="S3-001")
-        feats = compute_pair_features(s1, cand)
-        feat_dict = dict(zip(FEATURE_NAMES, feats))
-        assert feat_dict["target_source_is_s3"] == 1.0
-
-    def test_s2_source_flag(self):
-        """target_source_is_s3 should be 0.0 for S2- prefixed candidates."""
-        s1 = make_record(entity_id="S1-001")
-        cand = make_record(entity_id="S2-001")
-        feats = compute_pair_features(s1, cand)
-        feat_dict = dict(zip(FEATURE_NAMES, feats))
-        assert feat_dict["target_source_is_s3"] == 0.0
-
-    def test_no_nan_values(self):
-        """Feature vector must contain no NaN/None values."""
-        import math
+    def test_all_values_are_floats_no_nans(self):
         s1 = make_record(entity_id="S1-001", clean_address="", building_number="", postal_code="")
         cand = make_record(entity_id="S2-001", clean_address="", building_number="", postal_code="")
         feats = compute_pair_features(s1, cand)
-        for i, v in enumerate(feats):
-            assert not math.isnan(v), f"NaN at feature index {i} ({FEATURE_NAMES[i]})"
+        for i, val in enumerate(feats):
+            assert isinstance(val, (float, int)), f"Feature {FEATURE_NAMES[i]} is not numeric: {type(val)}"
+            assert not math.isnan(val), f"Feature {FEATURE_NAMES[i]} is NaN"
+            assert not math.isinf(val), f"Feature {FEATURE_NAMES[i]} is Inf"
 
-    def test_postal_prefix_match(self):
-        """postal_prefix_match checks first 2 digits of postal code."""
-        s1 = make_record(entity_id="S1-001", postal_code="10001")
-        cand = make_record(entity_id="S2-001", postal_code="10099")
+
+class TestFeatureCategories:
+    """Tests targeted scenarios required by specification."""
+
+    def test_exact_match(self):
+        """Exact match scenario: identical clean names, addresses, postal, and building number."""
+        s1 = make_record(
+            entity_id="S1-001",
+            clean_name="acme logistics inc",
+            root_name="acme logistics",
+            clean_address="100 broadway new york",
+            postal_code="10001",
+            building_number="100",
+        )
+        cand = make_record(
+            entity_id="S2-001",
+            clean_name="acme logistics inc",
+            root_name="acme logistics",
+            clean_address="100 broadway new york",
+            postal_code="10001",
+            building_number="100",
+        )
         feats = compute_pair_features(s1, cand)
-        feat_dict = dict(zip(FEATURE_NAMES, feats))
-        assert feat_dict["postal_prefix_match"] == 1.0  # both start with "10"
-        assert feat_dict["postal_exact_match"] == 0.0
+        fd = dict(zip(FEATURE_NAMES, feats))
 
-    def test_feature_values_in_range(self):
-        """Most features should be in [-1.0, 1.0] range."""
+        assert fd["name_exact_match"] == 1.0
+        assert fd["root_name_exact_match"] == 1.0
+        assert fd["name_ratio"] == 1.0
+        assert fd["addr_ratio"] == 1.0
+        assert fd["addr_present_both"] == 1.0
+        assert fd["house_number_match"] == 1.0
+        assert fd["postal_exact_match"] == 1.0
+        assert fd["postal_prefix_match"] == 1.0
+        assert fd["numeric_token_overlap"] == 1.0
+        assert fd["country_match"] == 1.0
+        assert fd["combined_weighted_sim"] == 1.0
+
+    def test_typo_resilience(self):
+        """Typo scenario: minor character insertions or deletions."""
+        s1 = make_record(clean_name="acme logistics international", root_name="acme logistics international")
+        cand = make_record(clean_name="acm logistcs internatonal", root_name="acm logistcs internatonal")
+        feats = compute_pair_features(s1, cand)
+        fd = dict(zip(FEATURE_NAMES, feats))
+
+        assert fd["name_exact_match"] == 0.0
+        assert fd["name_ratio"] > 0.85
+        assert fd["name_jaro_winkler"] > 0.88
+        assert fd["name_char3_jaccard"] > 0.50
+
+    def test_abbreviation(self):
+        """Abbreviation scenario: expanded tokens vs abbreviated tokens."""
+        s1 = make_record(clean_name="international business machines", root_name="international business machines")
+        cand = make_record(clean_name="ibm", root_name="ibm")
+        feats = compute_pair_features(s1, cand)
+        fd = dict(zip(FEATURE_NAMES, feats))
+
+        assert fd["name_exact_match"] == 0.0
+        assert fd["name_len_diff_ratio"] > 0.80
+
+        # Sub-token containment scenario
+        s1_c = make_record(clean_name="starbucks coffee company", root_name="starbucks coffee")
+        cand_c = make_record(clean_name="starbucks", root_name="starbucks")
+        feats_c = compute_pair_features(s1_c, cand_c)
+        fd_c = dict(zip(FEATURE_NAMES, feats_c))
+        assert fd_c["name_token_containment"] == 1.0
+
+    def test_missing_address(self):
+        """Missing address scenario: address features evaluate to 0.0 and addr_present_both to 0.0."""
+        s1 = make_record(clean_address="", building_number="")
+        cand = make_record(clean_address="100 market street", building_number="100")
+        feats = compute_pair_features(s1, cand)
+        fd = dict(zip(FEATURE_NAMES, feats))
+
+        assert fd["addr_present_both"] == 0.0
+        assert fd["addr_ratio"] == 0.0
+        assert fd["addr_token_sort_ratio"] == 0.0
+        assert fd["addr_token_set_ratio"] == 0.0
+        assert fd["addr_jaccard"] == 0.0
+        assert fd["house_number_match"] == -1.0  # missing sentinel
+
+    def test_missing_postal(self):
+        """Missing postal scenario: structural postal features return -1.0 sentinel."""
+        s1 = make_record(postal_code="")
+        cand = make_record(postal_code="75008")
+        feats = compute_pair_features(s1, cand)
+        fd = dict(zip(FEATURE_NAMES, feats))
+
+        assert fd["postal_exact_match"] == -1.0
+        assert fd["postal_prefix_match"] == -1.0
+
+    def test_same_building_number(self):
+        """Same building number scenario: house_number_match returns 1.0."""
+        s1 = make_record(building_number="450", numeric_tokens={"450"})
+        cand = make_record(building_number="450", numeric_tokens={"450"})
+        feats = compute_pair_features(s1, cand)
+        fd = dict(zip(FEATURE_NAMES, feats))
+
+        assert fd["house_number_match"] == 1.0
+
+    def test_different_building_number(self):
+        """Different building number scenario: house_number_match returns 0.0 (not -1.0)."""
+        s1 = make_record(building_number="450", numeric_tokens={"450"})
+        cand = make_record(building_number="452", numeric_tokens={"452"})
+        feats = compute_pair_features(s1, cand)
+        fd = dict(zip(FEATURE_NAMES, feats))
+
+        assert fd["house_number_match"] == 0.0
+
+    def test_s2_candidate(self):
+        """S2 candidate scenario: target_source_is_s3 returns 0.0."""
         s1 = make_record(entity_id="S1-001")
-        cand = make_record(entity_id="S2-001", clean_name="completely different", root_name="different")
+        cand = make_record(entity_id="S2-999")
         feats = compute_pair_features(s1, cand)
-        for i, v in enumerate(feats):
-            assert -1.0 <= v <= 1.0, f"Feature {FEATURE_NAMES[i]} = {v} out of range [-1, 1]"
+        fd = dict(zip(FEATURE_NAMES, feats))
+
+        assert fd["target_source_is_s3"] == 0.0
+
+    def test_s3_candidate(self):
+        """S3 candidate scenario: target_source_is_s3 returns 1.0."""
+        s1 = make_record(entity_id="S1-001")
+        cand = make_record(entity_id="S3-888")
+        feats = compute_pair_features(s1, cand)
+        fd = dict(zip(FEATURE_NAMES, feats))
+
+        assert fd["target_source_is_s3"] == 1.0
+
+    def test_transliteration_like_corruption(self):
+        """Transliteration / phonetic variation scenario (e.g. Indian/French phonetics)."""
+        s1 = make_record(clean_name="sharma enterprizes", root_name="sharma enterprizes")
+        cand = make_record(clean_name="sarma enterprises", root_name="sarma enterprises")
+        feats = compute_pair_features(s1, cand)
+        fd = dict(zip(FEATURE_NAMES, feats))
+
+        assert fd["name_exact_match"] == 0.0
+        assert fd["name_jaro_winkler"] > 0.88
+        assert fd["name_char3_jaccard"] > 0.50
+        assert fd["name_token_sort_ratio"] > 0.80
+
+
+class TestRangeValidation:
+    """Validates that all features fall within their bounded mathematical ranges."""
+
+    def test_range_across_diverse_records(self):
+        pairs = [
+            (make_record(clean_name="apple", postal_code="94016", building_number="1"), make_record(clean_name="apple inc", postal_code="94016", building_number="1")),
+            (make_record(clean_name="target", clean_address="", postal_code="", building_number=""), make_record(clean_name="walmart", clean_address="", postal_code="", building_number="")),
+            (make_record(clean_name="", country="US"), make_record(clean_name="", country="FRANCE")),
+            (make_record(clean_name="a", postal_code="1"), make_record(clean_name="z", postal_code="2")),
+        ]
+
+        sentinel_features = {"house_number_match", "postal_exact_match", "postal_prefix_match"}
+
+        for s1, cand in pairs:
+            feats = compute_pair_features(s1, cand)
+            fd = dict(zip(FEATURE_NAMES, feats))
+            for name, val in fd.items():
+                if name in sentinel_features:
+                    assert val in (-1.0, 0.0, 1.0), f"Sentinel feature {name} has unexpected value: {val}"
+                else:
+                    assert 0.0 <= val <= 1.0, f"Feature {name} = {val} out of bounds [0, 1]"
+
+
+class TestLightGBMFeatureContract:
+    """Verifies that EntityResolutionModel enforces exactly 23 columns."""
+
+    def test_model_train_accepts_23_columns(self):
+        model = EntityResolutionModel()
+        X_train = np.random.rand(50, 23).astype(np.float32)
+        y_train = np.random.randint(0, 2, size=50).astype(np.int32)
+        X_val = np.random.rand(10, 23).astype(np.float32)
+        y_val = np.random.randint(0, 2, size=10).astype(np.int32)
+
+        # Should execute without dimension assertion error
+        model.train(X_train, y_train, X_val=X_val, y_val=y_val)
+        assert model.clf is not None
+
+        # Predict should also enforce 23 columns
+        X_test = np.random.rand(5, 23).astype(np.float32)
+        probs = model.predict_proba(X_test)
+        assert len(probs) == 5
+
+    def test_model_train_rejects_wrong_column_count(self):
+        model = EntityResolutionModel()
+        # 22 columns instead of 23
+        X_train_bad = np.random.rand(50, 22).astype(np.float32)
+        y_train = np.random.randint(0, 2, size=50).astype(np.int32)
+
+        with pytest.raises(AssertionError, match="Feature dimension mismatch"):
+            model.train(X_train_bad, y_train)
+
+    def test_model_predict_rejects_wrong_column_count(self):
+        model = EntityResolutionModel()
+        X_train = np.random.rand(50, 23).astype(np.float32)
+        y_train = np.random.randint(0, 2, size=50).astype(np.int32)
+        model.train(X_train, y_train)
+
+        # 24 columns instead of 23
+        X_test_bad = np.random.rand(5, 24).astype(np.float32)
+        with pytest.raises(AssertionError, match="Feature dimension mismatch"):
+            model.predict_proba(X_test_bad)

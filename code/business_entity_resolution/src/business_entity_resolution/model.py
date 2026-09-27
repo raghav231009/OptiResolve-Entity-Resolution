@@ -59,6 +59,19 @@ class EntityResolutionModel:
             and len(X_val) > 0
             and len(y_val) > 0
         )
+
+        # Requirement: Verify LightGBM receives exactly 23 columns matching FEATURE_NAMES
+        if X_train is not None and len(X_train) > 0:
+            assert X_train.shape[1] == len(FEATURE_NAMES) == 23, (
+                f"Feature dimension mismatch: X_train has {X_train.shape[1]} columns, "
+                f"expected exactly {len(FEATURE_NAMES)} (23)"
+            )
+        if has_val:
+            assert X_val.shape[1] == len(FEATURE_NAMES) == 23, (
+                f"Feature dimension mismatch: X_val has {X_val.shape[1]} columns, "
+                f"expected exactly {len(FEATURE_NAMES)} (23)"
+            )
+
         stopping_rounds = getattr(self.config, "early_stopping_rounds", 30)
         callbacks = [lgb.early_stopping(stopping_rounds=stopping_rounds, verbose=True)] if has_val else None
 
@@ -93,6 +106,10 @@ class EntityResolutionModel:
             raise ValueError("Model has not been trained yet.")
         if len(X) == 0:
             return np.empty(0, dtype=np.float32)
+        assert X.shape[1] == len(FEATURE_NAMES) == 23, (
+            f"Feature dimension mismatch: input X has {X.shape[1]} columns, "
+            f"expected exactly {len(FEATURE_NAMES)} (23)"
+        )
         return self.clf.predict_proba(X)[:, 1]
 
     def get_feature_importances(self) -> Dict[str, float]:
