@@ -67,6 +67,11 @@ def main():
         help="Explicit candidate cap K per entity override (default: configured in BlockingConfig)",
     )
     parser.add_argument("--batch-size", type=int, default=50000, help="Batch size for streaming test inference")
+    parser.add_argument(
+        "--allow-missing-targets",
+        action="store_true",
+        help="In development mode, allow pipeline to continue even if required ground-truth target entities are missing from target sources",
+    )
     args = parser.parse_args()
 
     # Determine execution phases from flags or --mode
@@ -112,6 +117,11 @@ def main():
 
     if args.max_candidates is not None:
         config.blocking.max_candidates_per_entity = args.max_candidates
+
+    if args.allow_missing_targets:
+        if config.is_production:
+            parser.error("--allow-missing-targets cannot be used in production mode! Production training requires 100% of ground-truth target entities to prevent incomplete positive labels.")
+        config.allow_missing_targets = True
 
     pipeline = EntityResolutionPipeline(config)
 

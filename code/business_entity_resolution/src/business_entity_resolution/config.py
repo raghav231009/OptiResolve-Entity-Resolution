@@ -158,6 +158,15 @@ class PipelineConfig:
     threshold_fine_window: float = 0.03
     default_threshold: float = 0.910
 
+    allow_missing_targets: bool = False
+
+    def __post_init__(self):
+        if self.is_production and self.allow_missing_targets:
+            raise ValueError(
+                "Production training violation: allow_missing_targets cannot be True in production mode! "
+                "Production requires 100% of ground-truth target entities to prevent incomplete positive labels."
+            )
+
     @property
     def is_production(self) -> bool:
         return self.training_mode == "production"

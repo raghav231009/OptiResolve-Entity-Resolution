@@ -4,10 +4,12 @@ Supports full dataset training, early stopping validation, threshold optimizatio
 and streamed inference for test sets.
 """
 
+from datetime import datetime, timezone
 import gc
 import json
 import logging
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 import numpy as np
 import pandas as pd
@@ -140,6 +142,151 @@ def analyze_target_s1_cardinality(ground_truth: Dict[str, Set[str]]) -> Dict[str
     return stats
 
 
+TARGET_ID_REGEX = re.compile(r"^S([23])-([A-Za-z0-9_\-]+)$")
+
+
+class TargetPoolVerificationError(RuntimeError):
+    """Raised when required ground-truth target entities are missing from target sources."""
+    pass
+
+
+def verify_target_pool_completeness(
+    required_ids: Set[str],
+    loaded_records: List[dict],
+    source_paths: Optional[List[Path]] = None,
+    allow_missing: bool = False,
+    diagnostic_path: Optional[Path] = None,
+    pool_label: str = "Target Pool",
+    strict_prefix: bool = False,
+) -> Dict[str, Any]:
+    """
+    Harden ground-truth target loading by verifying that every required target ID
+    exists in the loaded records and conforms to expected source mapping.
+
+    Requirements:
+    1. Calculate required_target_ids, loaded_target_ids, missing_target_ids.
+    2. In production training (allow_missing=False): fail loudly if missing_target_ids > 0.
+    3. In development mode (allow_missing=True): allow optional continuation only with explicit flag.
+    4. Save missing target IDs to a structured diagnostic JSON file.
+    5. Report missing IDs categorized by source (Source 2 vs Source 3 vs Malformed).
+    6. Verify every ground-truth target ID exists exactly where expected.
+    """
+    required_target_ids = {str(eid).strip() for eid in required_ids if eid is not None and str(eid).strip() != ""}
+    loaded_target_ids = {str(r["entity_id"]).strip() for r in loaded_records if "entity_id" in r}
+    missing_target_ids = required_target_ids - loaded_target_ids
+
+    # Categorize required target IDs by source and check for malformed formats
+    s2_required = set()
+    s3_required = set()
+    malformed_required = set()
+
+    for tid in required_target_ids:
+        # Check for malformed syntax (whitespace, control chars, comma, etc.)
+        is_syntax_invalid = bool(
+            not tid
+            or any(c in tid for c in " \t\n\r,")
+            or not re.match(r"^[A-Za-z0-9]+[_\-][A-Za-z0-9_\-]+$", tid)
+        )
+        match = TARGET_ID_REGEX.match(tid)
+        if match:
+            if match.group(1) == "2":
+                s2_required.add(tid)
+            elif match.group(1) == "3":
+                s3_required.add(tid)
+        elif is_syntax_invalid or strict_prefix:
+            malformed_required.add(tid)
+        elif tid.startswith("S2-"):
+            s2_required.add(tid)
+        elif tid.startswith("S3-"):
+            s3_required.add(tid)
+        else:
+            # Non-standard prefix, but valid syntax (e.g. synthetic test IDs like T_001)
+            # Marked as malformed only if strict_prefix is True
+            malformed_required.add(tid)
+
+    # Missing IDs breakdown
+    missing_s2 = sorted([tid for tid in missing_target_ids if tid in s2_required])
+    missing_s3 = sorted([tid for tid in missing_target_ids if tid in s3_required])
+    missing_malformed = sorted([tid for tid in missing_target_ids if tid in malformed_required])
+
+    logger.info("============================================================")
+    logger.info(f"GROUND-TRUTH TARGET VERIFICATION AUDIT [{pool_label.upper()}]:")
+    logger.info(f"  Required Target IDs:         {len(required_target_ids):,}")
+    logger.info(f"    - Source 2 Expected:       {len(s2_required):,}")
+    logger.info(f"    - Source 3 Expected:       {len(s3_required):,}")
+    if malformed_required:
+        logger.warning(f"    - Malformed Target IDs:    {len(malformed_required):,} (e.g., {list(malformed_required)[:5]})")
+    logger.info(f"  Loaded Target Records:       {len(loaded_records):,}")
+    logger.info(f"  Unique Loaded Target IDs:    {len(loaded_target_ids):,}")
+    logger.info(f"  Missing Target IDs:          {len(missing_target_ids):,}")
+    if missing_target_ids:
+        logger.info(f"    - Missing Source 2 IDs:    {len(missing_s2):,}")
+        logger.info(f"    - Missing Source 3 IDs:    {len(missing_s3):,}")
+        logger.info(f"    - Missing Malformed IDs:   {len(missing_malformed):,}")
+    logger.info("============================================================")
+
+    audit_summary = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "pool_label": pool_label,
+        "required_target_count": len(required_target_ids),
+        "loaded_target_count": len(loaded_target_ids),
+        "missing_target_count": len(missing_target_ids),
+        "missing_by_source": {
+            "S2": {
+                "count": len(missing_s2),
+                "sample": missing_s2[:20],
+                "expected_file": "train_source2.tsv",
+            },
+            "S3": {
+                "count": len(missing_s3),
+                "sample": missing_s3[:20],
+                "expected_file": "train_source3.tsv",
+            },
+            "malformed": {
+                "count": len(missing_malformed),
+                "sample": missing_malformed[:20],
+                "expected_file": "unknown / malformed ID format",
+            },
+        },
+        "missing_target_ids": sorted(list(missing_target_ids)),
+        "malformed_target_ids": sorted(list(malformed_required)),
+    }
+
+    if missing_target_ids or (strict_prefix and malformed_required):
+        if diagnostic_path is None:
+            # Default to artifacts directory
+            diagnostic_path = Path("artifacts") / f"missing_targets_{pool_label.lower().replace(' ', '_')}.json"
+
+        try:
+            diagnostic_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(diagnostic_path, "w", encoding="utf-8") as f:
+                json.dump(audit_summary, f, indent=2)
+            logger.info(f"Detailed missing targets diagnosis saved to: {diagnostic_path}")
+        except Exception as e:
+            logger.warning(f"Could not write diagnostic file to {diagnostic_path}: {e}")
+
+        # In production mode (or strict mode when allow_missing=False), fail loudly!
+        if not allow_missing:
+            sample_missing = list(missing_target_ids)[:10] if missing_target_ids else list(malformed_required)[:10]
+            err_msg = (
+                f"Ground-truth target loading failure in {pool_label}! "
+                f"Missing {len(missing_target_ids):,} / {len(required_target_ids):,} required target IDs "
+                f"(S2: {len(missing_s2):,}, S3: {len(missing_s3):,}, Malformed: {len(missing_malformed):,}). "
+                f"Sample missing IDs: {sample_missing}. "
+                f"Missing target IDs saved to: {diagnostic_path}. "
+                f"Training with missing positive labels is strictly prohibited in production!"
+            )
+            logger.error(err_msg)
+            raise TargetPoolVerificationError(err_msg)
+        else:
+            logger.warning(
+                f"[DEVELOPMENT MODE] Allowing continuation with {len(missing_target_ids):,} missing targets "
+                f"due to explicit allow_missing_targets flag. Diagnostic file: {diagnostic_path}"
+            )
+
+    return audit_summary
+
+
 def load_isolated_target_pools(
     source_paths: List[Path],
     train_needed_ids: Set[str],
@@ -147,6 +294,8 @@ def load_isolated_target_pools(
     train_background_sample_per_file: int = 120000,
     val_background_sample_per_file: int = 60000,
     chunksize: int = 100000,
+    allow_missing_targets: bool = False,
+    diagnostic_dir: Optional[Path] = None,
 ) -> Tuple[List[dict], List[dict]]:
     """
     Stream through operational target sources (Source 2 and Source 3) and construct
@@ -157,6 +306,7 @@ def load_isolated_target_pools(
     2. Zero training target IDs appear in the validation pool when corresponding to validation ground truth.
     3. Background negatives are sampled separately and disjointly (even vs odd slices).
     4. Memory-efficient streaming pass without redundant file reads.
+    5. Rigorous completeness verification: fails loudly in production if any required target is missing.
     """
     train_targets: List[dict] = []
     val_targets: List[dict] = []
@@ -216,11 +366,27 @@ def load_isolated_target_pools(
                         val_targets.append(preprocess_record(r))
                     val_bg_loaded += take_val
 
-    logger.info(
-        f"Isolated target loading complete: {len(train_targets):,} train targets "
-        f"(Missing true: {len(remaining_train_needed)}), {len(val_targets):,} val targets "
-        f"(Missing true: {len(remaining_val_needed)})."
+    # Verify completeness for both training and validation target pools (Requirements 1, 2, 3, 4, 5, 6)
+    train_diag = (diagnostic_dir / "missing_targets_train.json") if diagnostic_dir else None
+    val_diag = (diagnostic_dir / "missing_targets_val.json") if diagnostic_dir else None
+
+    verify_target_pool_completeness(
+        required_ids=train_needed_ids,
+        loaded_records=train_targets,
+        source_paths=source_paths,
+        allow_missing=allow_missing_targets,
+        diagnostic_path=train_diag,
+        pool_label="Training Target Pool",
     )
+    verify_target_pool_completeness(
+        required_ids=val_needed_ids,
+        loaded_records=val_targets,
+        source_paths=source_paths,
+        allow_missing=allow_missing_targets,
+        diagnostic_path=val_diag,
+        pool_label="Validation Target Pool",
+    )
+
     return train_targets, val_targets
 
 
@@ -230,11 +396,14 @@ def load_targeted_training_targets(
     forbidden_ids: Optional[Set[str]] = None,
     background_sample_per_file: int = 150000,
     chunksize: int = 100000,
+    allow_missing_targets: bool = False,
+    diagnostic_dir: Optional[Path] = None,
 ) -> List[dict]:
     """
     Stream through target source files, ensuring all true matching target records
     are loaded, plus background distractors for negative mining.
     Allows optional forbidden_ids to prevent target-level leakage.
+    Fails loudly if any required ground truth target ID is missing.
     """
     targets = []
     remaining_needed = set(needed_ids)
@@ -259,7 +428,15 @@ def load_targeted_training_targets(
                     targets.append(preprocess_record(r))
                 bg_loaded += take_n  # increment once per chunk-slice, not per record
 
-    logger.info(f"Targeted loading complete: {len(targets):,} records loaded (Missing true targets: {len(remaining_needed)}).")
+    diag_path = (diagnostic_dir / "missing_targets.json") if diagnostic_dir else None
+    verify_target_pool_completeness(
+        required_ids=needed_ids,
+        loaded_records=targets,
+        source_paths=source_paths,
+        allow_missing=allow_missing_targets,
+        diagnostic_path=diag_path,
+        pool_label="Targeted Training Targets",
+    )
     return targets
 
 
@@ -507,6 +684,8 @@ class EntityResolutionPipeline:
             val_needed_ids=val_needed_ids,
             train_background_sample_per_file=120000,
             val_background_sample_per_file=60000,
+            allow_missing_targets=self.config.allow_missing_targets,
+            diagnostic_dir=self.config.paths.artifacts_dir,
         )
 
         train_target_ids = {r["entity_id"] for r in train_targets}
